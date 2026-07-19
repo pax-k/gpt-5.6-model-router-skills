@@ -1,0 +1,21 @@
+{
+  "name": "gpt-5-6-model-router-skills",
+  "interface": {
+    "displayName": "GPT-5.6 Model Router Skills",
+    "shortDescription": "Autonomous GPT-5.6 workflow routing and setup"
+  },
+  "plugins": [
+    {
+      "name": "gpt-5-6-model-router",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gpt-5-6-model-router"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

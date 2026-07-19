@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://openai.com/codex/gpt56-router/completion-record.schema.json",
+  "title": "GPT-5.6 router completion record", "type": "object",
+  "required": ["schema_version", "root_task_id", "status", "complete", "requested_outcomes_satisfied", "validation_passed", "required_reviews_complete", "unresolved_findings", "ready_or_running_nodes", "external_actions_taken", "residual_risks", "routes_used", "unmet_gates"],
+  "properties": {
+    "schema_version": {"const": 1}, "root_task_id": {"type": "string", "minLength": 1}, "status": {"enum": ["complete", "partial", "failed", "cancelled"]}, "complete": {"type": "boolean"},
+    "requested_outcomes_satisfied": {"type": "boolean"}, "validation_passed": {"type": "boolean"}, "required_reviews_complete": {"type": "boolean"},
+    "unresolved_findings": {"type": "array"}, "ready_or_running_nodes": {"type": "array"}, "external_actions_taken": {"type": "array"}, "residual_risks": {"type": "array"}, "routes_used": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}, "unmet_gates": {"type": "array"}
+  }, "additionalProperties": false
+}

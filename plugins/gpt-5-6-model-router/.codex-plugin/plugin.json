@@ -1,0 +1,42 @@
+{
+  "name": "gpt-5-6-model-router",
+  "version": "0.2.0+codex.20260719165337",
+  "description": "Explicitly route Codex workflows autonomously to GPT-5.6 subagents through schema-2 custom agents or model overrides.",
+  "author": {
+    "name": "Pax Dynamics",
+    "email": "hello@paxdynamics.com",
+    "url": "https://paxdynamics.com"
+  },
+  "homepage": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
+  "repository": "https://github.com/pax-k/gpt-5.6-model-router-skills",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "model-routing",
+    "subagents",
+    "gpt-5.6"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GPT-5.6 Model Router",
+    "shortDescription": "Autonomously route tasks to pinned GPT-5.6 agents",
+    "longDescription": "Complete evidence-backed work autonomously through Luna, Terra, or Sol while preserving route enforcement, review, validation, explicit re-entry capabilities, and reversible depth-two setup.",
+    "developerName": "Pax Dynamics",
+    "category": "Productivity",
+    "websiteURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
+    "privacyPolicyURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router/privacy",
+    "termsOfServiceURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router/terms",
+    "logo": "./assets/logo.png",
+    "brandColor": "#00F3FF",
+    "capabilities": [
+      "Structured subagent routing",
+      "Autonomous orchestration",
+      "Local agent and recursion setup"
+    ],
+    "defaultPrompt": [
+      "$setup-gpt56-model-router Install and verify the model router agents.",
+      "$route-gpt56-task Complete this task autonomously through the best GPT-5.6 routes without routine approval pauses.",
+      "$route-gpt56-task Route an independent consequential review with runtime evidence."
+    ]
+  }
+}

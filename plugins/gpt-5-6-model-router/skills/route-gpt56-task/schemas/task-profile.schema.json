@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openai.com/codex/gpt56-router/task-profile.schema.json",
+  "title": "GPT-5.6 router task profile",
+  "type": "object",
+  "required": ["schema_version", "objective", "kind", "phase", "dimensions", "risk_domains", "prior_attempts", "read_scopes", "write_scopes", "human_authority", "orchestrator", "depth", "delegation_request"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "task_id": {"type": "string", "format": "uuid"},
+    "node_id": {"type": "string", "format": "uuid"},
+    "objective": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["mechanical", "exploration", "implementation", "ambiguous", "debugging", "review"]},
+    "phase": {"enum": ["intake", "exploration", "implementation", "validation", "repair", "review"]},
+    "dimensions": {
+      "type": "object",
+      "required": ["ambiguity", "consequence", "context_breadth", "irreversibility", "verification_strength", "latency_sensitivity"],
+      "properties": {
+        "ambiguity": {"$ref": "#/$defs/dimension"},
+        "consequence": {"$ref": "#/$defs/dimension"},
+        "context_breadth": {"$ref": "#/$defs/dimension"},
+        "irreversibility": {"$ref": "#/$defs/dimension"},
+        "verification_strength": {"$ref": "#/$defs/dimension"},
+        "latency_sensitivity": {"$ref": "#/$defs/dimension"}
+      },
+      "additionalProperties": false
+    },
+    "risk_domains": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "prior_attempts": {"type": "array", "items": {"$ref": "#/$defs/prior_attempt"}},
+    "read_scopes": {"$ref": "#/$defs/scopes"},
+    "write_scopes": {"$ref": "#/$defs/scopes"},
+    "dependencies": {"$ref": "#/$defs/strings"},
+    "read_only": {"type": "boolean"},
+    "human_authority": {
+      "type": "object",
+      "required": ["local_writes", "external_writes", "destructive_actions", "quality_first"],
+      "properties": {
+        "local_writes": {"type": "boolean"}, "external_writes": {"type": "boolean"},
+        "destructive_actions": {"type": "boolean"}, "quality_first": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "orchestrator": {
+      "type": "object", "required": ["model", "effort"],
+      "properties": {"model": {"type": "string", "minLength": 1}, "effort": {"$ref": "#/$defs/effort"}},
+      "additionalProperties": false
+    },
+    "depth": {"type": "integer", "minimum": 0},
+    "delegation_request": {
+      "type": "object", "required": ["requested"],
+      "properties": {
+        "requested": {"type": "boolean"},
+        "authorize_descendants": {"type": "boolean"},
+        "max_children": {"type": "integer", "minimum": 0, "maximum": 3},
+        "max_parallel_children": {"type": "integer", "minimum": 0, "maximum": 2},
+        "allowed_roles": {"$ref": "#/$defs/strings"},
+        "allowed_write_scopes": {"$ref": "#/$defs/strings"},
+        "may_spawn_writers": {"type": "boolean"},
+        "forbidden_actions": {"$ref": "#/$defs/strings"},
+        "required_return": {"$ref": "#/$defs/strings"}
+      }, "additionalProperties": false
+    },
+    "runtime_capabilities": {
+      "type": "object",
+      "properties": {
+        "agent_type": {"type": "boolean"}, "model_override": {"type": "boolean"},
+        "current_sandbox": {"enum": ["read-only", "workspace-write", "danger-full-access"]},
+        "read_only_agent_sandbox_enforced": {"type": "boolean"},
+        "available_agents": {"$ref": "#/$defs/strings"},
+        "available_models": {"$ref": "#/$defs/strings"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "dimension": {
+      "type": "object", "required": ["rating", "evidence"],
+      "properties": {"rating": {"type": "integer", "minimum": 0, "maximum": 3}, "evidence": {"type": "string", "minLength": 1}},
+      "additionalProperties": false
+    },
+    "effort": {"enum": ["none", "low", "medium", "high", "xhigh", "max"]},
+    "prior_attempt": {
+      "type": "object", "required": ["model", "effort", "outcome", "evidence"],
+      "properties": {"model": {"type": "string", "minLength": 1}, "effort": {"$ref": "#/$defs/effort"}, "outcome": {"type": "string", "minLength": 1}, "evidence": {"type": "string", "minLength": 1}},
+      "additionalProperties": false
+    },
+    "scopes": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "strings": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+  },
+  "additionalProperties": false
+}
