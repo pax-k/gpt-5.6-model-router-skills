@@ -25,9 +25,19 @@ Updated: July 19, 2026
 
 ## OpenAI portal
 
-Portal submission is prepared but not yet created. The in-app browser reaches
-the OpenAI Platform sign-in page. The signed-in Chrome session reaches the
-portal URL, but an open extension overlay currently blocks browser automation.
-Dismiss that overlay in Chrome, then continue the portal flow. The final portal
-also requires that the selected OpenAI organization exposes Apps Management
-write access and has a verified developer/business identity.
+Portal submission is prepared but not yet created. The signed-in Dia session
+successfully opened the Plugins page and exposed the skills-only creation flow,
+confirming that the selected Personal organization can access plugin creation.
+OpenAI then blocked creation pending developer identity verification.
+
+The organization settings page is left open at **Verifications** and requires
+the publisher to choose one legal status:
+
+- **Individual** — verifying as a solo developer; or
+- **Business** — verifying a registered company.
+
+The publisher must choose the accurate status and personally complete the
+identity-document flow. Once verification succeeds, return to
+`https://platform.openai.com/plugins` and continue with the prepared portal
+fields, archive, logo, reviewer tests, availability, release notes, and policy
+attestations.
