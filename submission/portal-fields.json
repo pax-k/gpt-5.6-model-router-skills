@@ -2,7 +2,7 @@
   "schema_version": 1,
   "plugin_type": "skills_only",
   "name": "GPT-5.6 Model Router",
-  "short_description": "Route Codex work to pinned GPT-5.6 agents with bounded autonomy and review gates.",
+  "short_description": "Route work to GPT-5.6 agents",
   "long_description": "GPT-5.6 Model Router is a skills-only Codex plugin for explicit, evidence-backed orchestration. One root invocation profiles work, selects a pinned Luna, Terra, or Sol role and reasoning effort, launches bounded waves, re-profiles discovered work, enforces scope and budget limits, and requires independent review for consequential changes. It includes ten managed custom-agent templates, dependency-free routing and task-graph CLIs, versioned schemas, reversible depth-two setup, deterministic completion gates, and runtime route inspection. It has no MCP server, hosted backend, connector, analytics, credentials, or implicit invocation.",
   "category": "Productivity",
   "developer": "Pax Dynamics",
@@ -18,7 +18,7 @@
     "$route-gpt56-task Complete this repository task autonomously through the best GPT-5.6 routes, with validation and required review.",
     "$route-gpt56-task Investigate this failure, preserve evidence, and route any discovered repair work to the appropriate agent."
   ],
-  "release_version": "0.2.0",
+  "release_version": "0.2.1",
   "availability": "All countries and regions where OpenAI permits plugin distribution",
   "support_language": "English"
 }

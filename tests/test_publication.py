@@ -46,6 +46,11 @@ class PublicationTests(unittest.TestCase):
                 self.assertFalse(any("__pycache__" in name or name.endswith(".pyc") for name in names))
                 self.assertIn("gpt-5-6-model-router/.codex-plugin/plugin.json", names)
                 self.assertIn("gpt-5-6-model-router/assets/logo.png", names)
+                manifest = json.loads(archive.read("gpt-5-6-model-router/.codex-plugin/plugin.json"))
+                interface = manifest["interface"]
+                self.assertEqual(interface["composerIcon"], "./assets/logo.png")
+                self.assertNotIn("brandColor", interface)
+                self.assertLessEqual(len(interface["shortDescription"]), 30)
 
 
 if __name__ == "__main__":

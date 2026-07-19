@@ -19,7 +19,7 @@ EXPECTED_AGENT_COUNT = 10
 MANAGED_MARKER = re.compile(
     r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=2$"
 )
-VERSION = re.compile(r"^0\.2\.0\+codex\.20260719\d{6}$")
+VERSION = re.compile(r"^0\.2\.1\+codex\.20260719\d{6}$")
 VALID_MODELS = {"gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"}
 VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 
@@ -42,7 +42,7 @@ def validate() -> list[str]:
         require(entries[0].get("source", {}).get("path") == "./plugins/gpt-5-6-model-router", "wrong plugin source path", errors)
 
     require(manifest.get("name") == PLUGIN.name, "manifest name must match plugin directory", errors)
-    require(bool(VERSION.fullmatch(manifest.get("version", ""))), "manifest must use a fresh v0.2.0 codex cachebuster", errors)
+    require(bool(VERSION.fullmatch(manifest.get("version", ""))), "manifest must use a fresh v0.2.1 codex cachebuster", errors)
     require(manifest.get("skills") == "./skills/", "manifest must expose skills", errors)
     require("hooks" not in manifest and "apps" not in manifest and "mcpServers" not in manifest, "plugin must not declare hooks, apps, or MCP servers", errors)
     author = manifest.get("author", {})
@@ -54,6 +54,9 @@ def validate() -> list[str]:
         require(str(interface.get(field, "")).startswith("https://paxdynamics.com/"), f"manifest publication URL is missing: {field}", errors)
     logo = PLUGIN / str(interface.get("logo", "")).removeprefix("./")
     require(logo.is_file(), "manifest logo is missing", errors)
+    composer_icon = PLUGIN / str(interface.get("composerIcon", "")).removeprefix("./")
+    require(composer_icon.is_file(), "manifest composer icon is missing", errors)
+    require("brandColor" not in interface, "live portal rejects interface.brandColor", errors)
 
     for skill_name in SKILLS:
         skill_root = PLUGIN / "skills" / skill_name

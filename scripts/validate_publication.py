@@ -77,6 +77,11 @@ def validate() -> list[str]:
     logo = PLUGIN / str(interface.get("logo", "")).removeprefix("./")
     require(logo.is_file(), "manifest logo is missing", errors)
     require(listing.get("logo_path") == str(logo.relative_to(ROOT)), "listing logo path differs from manifest logo", errors)
+    composer_icon = PLUGIN / str(interface.get("composerIcon", "")).removeprefix("./")
+    require(composer_icon.is_file(), "manifest composer icon is missing", errors)
+    require("brandColor" not in interface, "live portal rejects interface.brandColor", errors)
+    require(len(str(interface.get("shortDescription", ""))) <= 30, "manifest short description exceeds portal limit", errors)
+    require(listing.get("short_description") == interface.get("shortDescription"), "listing and manifest short descriptions differ", errors)
 
     positive = reviewer.get("positive", [])
     negative = reviewer.get("negative", [])

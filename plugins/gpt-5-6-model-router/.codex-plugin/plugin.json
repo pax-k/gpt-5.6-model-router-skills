@@ -1,6 +1,6 @@
 {
   "name": "gpt-5-6-model-router",
-  "version": "0.2.0+codex.20260719165337",
+  "version": "0.2.1+codex.20260719222851",
   "description": "Explicitly route Codex workflows autonomously to GPT-5.6 subagents through schema-2 custom agents or model overrides.",
   "author": {
     "name": "Pax Dynamics",
@@ -19,7 +19,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "GPT-5.6 Model Router",
-    "shortDescription": "Autonomously route tasks to pinned GPT-5.6 agents",
+    "shortDescription": "Route work to GPT-5.6 agents",
     "longDescription": "Complete evidence-backed work autonomously through Luna, Terra, or Sol while preserving route enforcement, review, validation, explicit re-entry capabilities, and reversible depth-two setup.",
     "developerName": "Pax Dynamics",
     "category": "Productivity",
@@ -27,7 +27,7 @@
     "privacyPolicyURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router/privacy",
     "termsOfServiceURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router/terms",
     "logo": "./assets/logo.png",
-    "brandColor": "#00F3FF",
+    "composerIcon": "./assets/logo.png",
     "capabilities": [
       "Structured subagent routing",
       "Autonomous orchestration",

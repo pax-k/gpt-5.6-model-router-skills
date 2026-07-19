@@ -1,6 +1,6 @@
 # Policy attestations
 
-The publisher attests that, for the submitted v0.2.0 skills-only bundle:
+The publisher attests that, for the submitted v0.2.1 skills-only bundle:
 
 - The listing and starter prompts describe the implemented behavior accurately.
 - The plugin requests no authentication and contains no MCP server, connector,

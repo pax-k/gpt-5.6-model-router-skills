@@ -1,6 +1,8 @@
-# GPT-5.6 Model Router v0.2.0
+# GPT-5.6 Model Router v0.2.1
 
-Initial public skills-only release.
+Initial public skills-only submission. This patch aligns the package with the
+live OpenAI submission validator by supplying the required composer icon and
+omitting the currently rejected `interface.brandColor` field.
 
 - Adds explicit, re-entrant routing across ten pinned GPT-5.6 roles.
 - Adds versioned task profiles, decisions, child events, graphs, capabilities,
