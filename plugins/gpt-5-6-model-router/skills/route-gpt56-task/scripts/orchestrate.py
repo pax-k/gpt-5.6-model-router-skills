@@ -124,6 +124,7 @@ def _new_node(profile: dict[str, Any], *, task_id: str, parent_id: str | None, d
         "delegation": _json_copy(profile.get("delegation", profile.get("delegation_capability", {"allowed": False}))),
         "dispatch_count": int(profile.get("dispatch_count", 0)),
         "awaiting_children": bool(profile.get("awaiting_children", False)),
+        "superseded": bool(profile.get("superseded", False)),
     }
 
 
@@ -406,6 +407,7 @@ def apply_control(state: dict[str, Any], control: dict[str, Any]) -> dict[str, A
         for task_id in targets:
             if state["nodes"][task_id]["status"] != "complete":
                 state["nodes"][task_id]["status"] = "cancelled"
+                state["nodes"][task_id]["superseded"] = True
         profiles = control.get("profiles", [])
         if not isinstance(profiles, list) or not profiles:
             raise OrchestrationError("redirect requires one or more re-profiled replacement nodes")
@@ -470,6 +472,16 @@ def _validate_event(state: dict[str, Any], event: dict[str, Any]) -> list[str]:
             errors.append(str(error))
     if event.get("task_id") != state["task_id"]:
         errors.append("event task_id must equal the root orchestration task_id")
+    node = state.get("nodes", {}).get(event.get("node_id"))
+    review = event.get("review") if isinstance(event.get("review"), dict) else {}
+    if node is not None and node["review"]["required"] and review.get("status") in {"passed", "failed"}:
+        prior_result = node.get("result") if isinstance(node.get("result"), dict) else {}
+        implementation_path = prior_result.get("agent_path")
+        review_path = event.get("agent_path")
+        if node["status"] != "review" or not implementation_path or review_path == implementation_path:
+            errors.append(
+                "mandatory review result must follow implementation and come from an independent agent_path"
+            )
     return errors
 
 
@@ -740,7 +752,10 @@ def complete_check(state: dict[str, Any], actor: str) -> dict[str, Any]:
     if actor != "root":
         raise OrchestrationError("only the root orchestrator may run the completion gate")
     unmet: list[dict[str, Any]] = []
-    child_nodes = [node for node in state["nodes"].values() if node["id"] != state["task_id"]]
+    child_nodes = [
+        node for node in state["nodes"].values()
+        if node["id"] != state["task_id"] and not node.get("superseded", False)
+    ]
     gate_nodes = child_nodes or [state["nodes"][state["task_id"]]]
     for node in gate_nodes:
         if node["status"] != "complete":

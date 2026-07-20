@@ -18,7 +18,7 @@
     "$route-gpt56-task Complete this repository task autonomously through the best GPT-5.6 routes, with validation and required review.",
     "$route-gpt56-task Investigate this failure, preserve evidence, and route any discovered repair work to the appropriate agent."
   ],
-  "release_version": "0.2.1",
+  "release_version": "0.2.2",
   "availability": "All countries and regions where OpenAI permits plugin distribution",
   "support_language": "English"
 }

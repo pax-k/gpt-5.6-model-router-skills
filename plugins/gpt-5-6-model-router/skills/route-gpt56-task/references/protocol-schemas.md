@@ -335,7 +335,13 @@ overall request.
 - Run overlapping or unknown write scopes sequentially.
 - Preserve completed evidence when pausing, cancelling, redirecting, or
   resuming.
+- Mark nodes made obsolete by a redirect as superseded. Exclude only those
+  superseded nodes from completion; an ordinary cancelled node remains an
+  unmet completion gate.
 - Distinguish partial, blocked, failed, cancelled, and complete outcomes.
 - Require independent review for consequential work.
+- Accept a mandatory `review.status` of `passed` or `failed` only after the
+  implementation event has moved the node to `review`, and only when the
+  review event has a different `agent_path` from that implementation event.
 - Treat reviewer findings as unresolved until a clean re-review or an explicit
   resolved/closed/dismissed finding state is recorded.

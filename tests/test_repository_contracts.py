@@ -27,9 +27,9 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
-    def test_manifest_uses_v021_fresh_codex_cachebuster(self) -> None:
+    def test_manifest_uses_v022_fresh_codex_cachebuster(self) -> None:
         manifest = json.loads((PLUGIN / ".codex-plugin" / "plugin.json").read_text())
-        self.assertRegex(manifest["version"], r"^0\.2\.1\+codex\.20260719\d{6}$")
+        self.assertRegex(manifest["version"], r"^0\.2\.2\+codex\.20260720\d{6}$")
         self.assertEqual(manifest["skills"], "./skills/")
 
     def test_router_documents_the_envelope_reentry_and_runtime_proof_boundaries(self) -> None:

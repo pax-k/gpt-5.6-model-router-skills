@@ -176,7 +176,9 @@ Classify the failure before acting:
 
 Route implementation at the required risk floor, run automated validation,
 then assign a separate Sol/high reviewer. Enter a bounded review-repair loop
-when findings exist.
+when findings exist. Record implementation and review as separate events: the
+implementation event must leave mandatory review pending, and the review event
+must come from a different `agent_path`.
 
 ### 11. Review-repair loop
 
@@ -209,7 +211,9 @@ authority beyond the specific action.
 
 Determine whether the new instruction replaces, narrows, or adds to the goal.
 Stop irrelevant agents, preserve useful completed evidence, cancel obsolete
-nodes, invalidate affected assumptions, and re-profile remaining work.
+nodes as superseded, invalidate affected assumptions, and re-profile remaining
+work. Superseded nodes no longer gate completion; cancellation without a
+replacement remains visible as incomplete work.
 
 ### 16. Human adds scope
 

@@ -1,19 +1,13 @@
-# GPT-5.6 Model Router v0.2.1
+# GPT-5.6 Model Router v0.2.2
 
-Initial public skills-only submission. This patch aligns the package with the
-live OpenAI submission validator by supplying the required composer icon and
-omitting the currently rejected `interface.brandColor` field.
+This patch closes two orchestration completion gaps found by the engineering
+routing evaluation.
 
-- Adds explicit, re-entrant routing across ten pinned GPT-5.6 roles.
-- Adds versioned task profiles, decisions, child events, graphs, capabilities,
-  and completion records.
-- Adds bounded root-managed waves and optional depth-two owner-to-leaf routing.
-- Adds automatic security, consequence, irreversibility, and verification risk
-  floors plus independent Sol/high review.
-- Adds dependency, write-scope, concurrency, spawn, depth, and review-repair
-  budgets.
-- Adds reversible installation and recursion configuration with backups.
-- Adds deterministic public packaging, standard-library validation, 25 workflow
-  fixtures, and runtime route inspection.
-- Contains no MCP server, hosted backend, connector, credentials, telemetry, or
-  implicit invocation.
+- Mandatory review results are accepted only after implementation and from a
+  different canonical `agent_path` than the implementer.
+- Redirected nodes are marked superseded and no longer block completion, while
+  ordinary cancellations remain visible as unmet work.
+- Workflow fixtures and regression tests cover self-review rejection,
+  independent review success, redirect completion, and cancellation gating.
+- The plugin remains skills-only and contains no MCP server, hosted backend,
+  connector, credentials, telemetry, or implicit invocation.

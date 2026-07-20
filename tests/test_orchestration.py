@@ -234,10 +234,19 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaisesRegex(orchestrate.OrchestrationError, "only the root"):
             orchestrate.complete_check(state, "worker")
 
-        finished = orchestrate.apply_event(
+        implemented = orchestrate.apply_event(
             state,
             event(
                 "complete",
+                validation=[{"status": "passed"}],
+                review={"required": True, "status": "pending", "findings": []},
+            ),
+        )
+        finished = orchestrate.apply_event(
+            implemented,
+            event(
+                "complete",
+                agent_path="/root/reviewer",
                 validation=[{"status": "passed"}],
                 review={"required": True, "status": "passed", "findings": []},
             ),
@@ -245,6 +254,43 @@ class OrchestrationTests(unittest.TestCase):
         completion = orchestrate.complete_check(finished, "root")
         self.assertTrue(completion["complete"])
         validate_completion_record(completion)
+
+    def test_implementer_cannot_satisfy_its_own_mandatory_review(self) -> None:
+        state = orchestrate.initialize(
+            profile(node(required_review=True, route_history=["gpt56_router_sol_debugger"]))
+        )
+        self_review = event(
+            "complete",
+            agent_path="/root/implementer",
+            validation=[{"status": "passed"}],
+            review={"required": True, "status": "passed", "findings": []},
+        )
+        rejected = orchestrate.apply_event(state, self_review)
+        self.assertEqual(rejected["nodes"][NODE_A]["status"], "waiting")
+        self.assertFalse(rejected["nodes"][NODE_A]["review"]["complete"])
+        self.assertIn("independent", rejected["events"][-1]["data"]["errors"][0])
+
+        implemented = orchestrate.apply_event(
+            rejected,
+            event(
+                "complete",
+                agent_path="/root/implementer",
+                validation=[{"status": "passed"}],
+                review={"required": True, "status": "pending", "findings": []},
+            ),
+        )
+        self.assertEqual(implemented["nodes"][NODE_A]["status"], "review")
+        reviewed = orchestrate.apply_event(
+            implemented,
+            event(
+                "complete",
+                agent_path="/root/reviewer",
+                validation=[{"status": "passed"}],
+                review={"required": True, "status": "passed", "findings": []},
+            ),
+        )
+        self.assertEqual(reviewed["nodes"][NODE_A]["status"], "complete")
+        self.assertTrue(orchestrate.complete_check(reviewed, "root")["complete"])
 
     def test_status_exposes_valid_public_task_graph_projection(self) -> None:
         state = orchestrate.initialize(profile(node(required_review=True)))
@@ -256,16 +302,28 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_unresolved_review_findings_block_completion_until_clean_rereview(self) -> None:
         state = orchestrate.initialize(profile(node(required_review=True)))
+        state = orchestrate.apply_event(
+            state,
+            event("complete", validation=[{"status": "passed"}], review={"required": True, "status": "pending", "findings": []}),
+        )
         finding = {"severity": "HIGH", "summary": "unsafe edge case"}
         state = orchestrate.apply_event(
             state,
-            event("complete", validation=[{"status": "passed"}], review={"required": True, "status": "passed", "findings": [finding]}),
+            event("complete", agent_path="/root/reviewer-1", validation=[{"status": "passed"}], review={"required": True, "status": "passed", "findings": [finding]}),
         )
         self.assertFalse(orchestrate.complete_check(state, "root")["complete"])
         self.assertFalse(state["nodes"][NODE_A]["review"]["complete"])
         state = orchestrate.apply_event(
             state,
-            event("complete", validation=[{"status": "passed"}], review={"required": True, "status": "passed", "findings": []}),
+            event("validation_failed", agent_path="/root/repair", validation=[{"status": "failed"}], review={"required": True, "status": "pending", "findings": [finding]}),
+        )
+        state = orchestrate.apply_event(
+            state,
+            event("complete", agent_path="/root/repair", validation=[{"status": "passed"}], review={"required": True, "status": "pending", "findings": [finding]}),
+        )
+        state = orchestrate.apply_event(
+            state,
+            event("complete", agent_path="/root/reviewer-2", validation=[{"status": "passed"}], review={"required": True, "status": "passed", "findings": []}),
         )
         self.assertTrue(orchestrate.complete_check(state, "root")["complete"])
 
@@ -340,6 +398,7 @@ class OrchestrationTests(unittest.TestCase):
         replacement = node(NODE_C)
         state = orchestrate.apply_control(state, {"action": "redirect", "task_ids": [NODE_B], "profiles": [replacement]})
         self.assertEqual(state["nodes"][NODE_B]["status"], "cancelled")
+        self.assertTrue(state["nodes"][NODE_B]["superseded"])
         self.assertEqual(state["nodes"][NODE_C]["status"], "ready")
 
         state = orchestrate.apply_event(
@@ -350,6 +409,22 @@ class OrchestrationTests(unittest.TestCase):
         state = orchestrate.apply_control(state, {"action": "resolve_blocker", "task_ids": [NODE_C]})
         self.assertEqual(state["external_blockers"], [])
         self.assertEqual(state["nodes"][NODE_C]["status"], "ready")
+
+    def test_redirected_node_does_not_block_completion_but_plain_cancellation_does(self) -> None:
+        redirected = orchestrate.initialize(profile(node(NODE_A)))
+        redirected = orchestrate.apply_control(
+            redirected,
+            {"action": "redirect", "task_ids": [NODE_A], "profiles": [node(NODE_B)]},
+        )
+        redirected = orchestrate.apply_event(
+            redirected,
+            event("complete", NODE_B, validation=[{"status": "passed"}]),
+        )
+        self.assertTrue(orchestrate.complete_check(redirected, "root")["complete"])
+
+        cancelled = orchestrate.initialize(profile(node(NODE_A)))
+        cancelled = orchestrate.apply_control(cancelled, {"action": "cancel", "task_ids": [NODE_A]})
+        self.assertFalse(orchestrate.complete_check(cancelled, "root")["complete"])
 
     def test_direct_execution_must_complete_the_root_node(self) -> None:
         state = orchestrate.initialize(profile())

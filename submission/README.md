@@ -1,7 +1,7 @@
 # OpenAI plugin submission package
 
 This directory is the reviewer-facing source of truth for the skills-only
-submission of GPT-5.6 Model Router v0.2.1.
+submission of GPT-5.6 Model Router v0.2.2.
 
 - `portal-fields.json` contains the exact listing fields and starter prompts.
 - `reviewer-tests.json` contains exactly five positive and three negative cases.
