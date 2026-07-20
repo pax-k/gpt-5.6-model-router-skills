@@ -1,6 +1,6 @@
 {
   "name": "gpt-5-6-model-router",
-  "version": "0.2.1+codex.20260719222851",
+  "version": "0.2.2+codex.20260720075405",
   "description": "Explicitly route Codex workflows autonomously to GPT-5.6 subagents through schema-2 custom agents or model overrides.",
   "author": {
     "name": "Pax Dynamics",

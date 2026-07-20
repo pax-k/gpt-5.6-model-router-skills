@@ -1,6 +1,6 @@
 # GPT-5.6 Model Router Skills
 
-Version 0.2.1 is a self-contained Codex marketplace for explicitly routing
+Version 0.2.2 is a self-contained Codex marketplace for explicitly routing
 work autonomously to GPT-5.6 Luna, Terra, and Sol roles. It keeps the root task's
 model unchanged. Routing is explicit at the root, then may be re-entered only
 by a child that received a bounded delegation capability.
@@ -63,7 +63,7 @@ $route-gpt56-task Complete this request autonomously through the best GPT-5.6 ro
 
 ## What is implemented
 
-Version 0.2.1 implements the routing policy, protocol schemas, 25 workflow
+Version 0.2.2 implements the routing policy, protocol schemas, 25 workflow
 scenarios, task-graph orchestration, route-message construction, runtime
 evidence inspection, and explicit recursion setup documented in the bundled
 references. `references/model-effort-research.md` remains evidence and

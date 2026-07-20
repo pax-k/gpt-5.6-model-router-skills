@@ -70,7 +70,9 @@ The default ladder is Luna/low, Terra/medium, Sol/medium, then Sol/high.
 Terra/high, Sol/xhigh, and Sol/max require the policy's evidence-backed
 escalation conditions. Consequential work requires an independent reviewer;
 the reviewer must receive the original requirement, artifacts, contracts, and
-validation evidence without the implementer's expected conclusion.
+validation evidence without the implementer's expected conclusion. Mandatory
+review is recorded only after implementation and from a different canonical
+`agent_path` than the implementer.
 
 ## Verify the spawn contract and build the call
 
