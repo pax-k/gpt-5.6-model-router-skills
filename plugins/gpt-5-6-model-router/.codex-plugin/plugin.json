@@ -1,7 +1,7 @@
 {
   "name": "gpt-5-6-model-router",
-  "version": "0.2.2+codex.20260720075405",
-  "description": "Explicitly route Codex workflows autonomously to GPT-5.6 subagents through schema-2 custom agents or model overrides.",
+  "version": "0.3.0+codex.20260721090607",
+  "description": "Autonomy-first GPT-5.6 routing with advisory defaults and bounded delegation.",
   "author": {
     "name": "Pax Dynamics",
     "email": "hello@paxdynamics.com",
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "GPT-5.6 Model Router",
     "shortDescription": "Route work to GPT-5.6 agents",
-    "longDescription": "Complete evidence-backed work autonomously through Luna, Terra, or Sol while preserving route enforcement, review, validation, explicit re-entry capabilities, and reversible depth-two setup.",
+    "longDescription": "Let the root autonomously choose whether and how to delegate, with cost-aware Luna, Terra, and Sol defaults, optional compact handoffs, bounded one-level descendants, and advisory critical review.",
     "developerName": "Pax Dynamics",
     "category": "Productivity",
     "websiteURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
@@ -29,14 +29,16 @@
     "logo": "./assets/logo.png",
     "composerIcon": "./assets/logo.png",
     "capabilities": [
-      "Structured subagent routing",
-      "Autonomous orchestration",
-      "Local agent and recursion setup"
+      "Cost-aware GPT-5.6 routing",
+      "Autonomous delegation judgment",
+      "Compact bounded-fork handoffs",
+      "Bounded one-level descendants",
+      "Advisory critical review"
     ],
     "defaultPrompt": [
-      "$setup-gpt56-model-router Install and verify the model router agents.",
-      "$route-gpt56-task Complete this task autonomously through the best GPT-5.6 routes without routine approval pauses.",
-      "$route-gpt56-task Route an independent consequential review with runtime evidence."
+      "$setup-gpt56-model-router Install or upgrade the schema-4 model router and depth capability.",
+      "$route-gpt56-task Handle this task with autonomous cost-aware GPT-5.6 routing.",
+      "$route-gpt56-task Handle this critical change with advisory independent review and root override authority."
     ]
   }
 }

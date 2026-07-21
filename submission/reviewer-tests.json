@@ -1,63 +1,63 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "positive": [
     {
-      "id": "positive-1-mechanical",
-      "prompt": "$route-gpt56-task Update these three fixture names consistently and run the exact unit test that verifies them.",
-      "setup": "Use a disposable repository with three known fixture strings and one deterministic unit test. Permit writes only to those fixture files.",
-      "expected_behavior": "The root profiles bounded, repetitive, strongly verified work and selects the Luna worker at low effort when the runtime exposes an enforceable route.",
-      "expected_result": "The decision is delegate with gpt56_router_luna_worker, validation is recorded, and root completion occurs only after the test passes."
+      "id": "positive-1-root-trivial",
+      "prompt": "$route-gpt56-task Rename one local fixture and run its focused test.",
+      "setup": "Provide a trivial bounded change whose delegation overhead exceeds its benefit.",
+      "expected_behavior": "The root handles the task directly without creating routing paperwork.",
+      "expected_result": "Zero child spawns; the focused test passes."
     },
     {
-      "id": "positive-2-exploration",
-      "prompt": "$route-gpt56-task Trace where authentication state is created, refreshed, and consumed. Return evidence; do not edit files.",
-      "setup": "Use a repository with multiple auth modules. Mark the node read_only with repository-wide read scope and no write scope.",
-      "expected_behavior": "The root selects the Terra explorer at medium effort and parallelizes only independent read-only evidence work.",
-      "expected_result": "The terminal event contains evidence-backed findings, no writes, and a valid complete or new_work event for root re-profiling."
+      "id": "positive-2-luna",
+      "prompt": "$route-gpt56-task Apply a clear mechanical edit across three named fixtures.",
+      "setup": "Provide exact paths, objective acceptance criteria, and a deterministic check.",
+      "expected_behavior": "The root chooses a bounded Luna/low delegation because the handoff has positive expected value.",
+      "expected_result": "One compact child completes the edit and validation."
     },
     {
-      "id": "positive-3-architecture",
-      "prompt": "$route-gpt56-task Implement a durable job boundary across the API and worker while preserving the existing public contract and tests.",
-      "setup": "Use a disposable cross-module repository. Give explicit write scopes and acceptance tests; mark ambiguity and architectural coupling high.",
-      "expected_behavior": "The root selects the Sol engineer at medium effort, reserves non-overlapping scopes before dispatch, and validates integration after child completion.",
-      "expected_result": "Implementation and integration validation are recorded in the graph; unresolved nodes prevent premature root completion."
+      "id": "positive-3-disjoint-fanout",
+      "prompt": "$route-gpt56-task Investigate four independent subsystems and integrate the findings.",
+      "setup": "Provide four distinct read-only questions with canonical paths.",
+      "expected_behavior": "The root autonomously runs useful independent work concurrently.",
+      "expected_result": "Disjoint findings return through concise action updates and one integrated answer."
     },
     {
-      "id": "positive-4-consequential-review",
-      "prompt": "$route-gpt56-task Repair the authorization check that can expose another tenant's records, add regression coverage, and verify the final diff independently.",
-      "setup": "Use a disposable security fixture. Mark security, severe impact, and consequential writes in the task profile.",
-      "expected_behavior": "The risk floor forces Sol/high primary execution when required and always schedules an independent Sol/high reviewer after validation.",
-      "expected_result": "Root completion fails until the security regression test and mandatory independent review pass with no unresolved critical findings."
+      "id": "positive-4-one-level",
+      "prompt": "$route-gpt56-task Let the architecture workstream split two bounded independent investigations if useful.",
+      "setup": "Give the first child Delegation grant: one-level and enable depth 2.",
+      "expected_behavior": "The child may create useful descendants and gives each Delegation grant: none.",
+      "expected_result": "Depth-2 descendants remain leaves; no deeper delegation occurs."
     },
     {
-      "id": "positive-5-depth-two",
-      "prompt": "$route-gpt56-task Modernize this bounded subsystem. Let an authorized workstream owner delegate independent read-only discovery where useful, and enforce the default budgets.",
-      "setup": "Enable recursion explicitly. Provide a capability granting only Terra explorer or Sol engineer ownership, depth two, at most three children, and explicit scopes.",
-      "expected_behavior": "The root may grant one valid delegation capability; the owner can spawn only permitted leaf roles and cannot expand scope, depth, roles, or budgets.",
-      "expected_result": "A root-to-owner-to-leaf flow succeeds, excess work returns upward as budget_exhausted or new_work, and only the root emits overall completion."
+      "id": "positive-5-critical-override",
+      "prompt": "$route-gpt56-task Implement this authorization change and decide whether independent review adds value.",
+      "setup": "Mark authorization critical and make Sol/high review available.",
+      "expected_behavior": "Review is recommended, while the root may follow or override it based on live evidence.",
+      "expected_result": "The final result records material review action, not routing calculations."
+    },
+    {
+      "id": "positive-6-unavailable-fallback",
+      "prompt": "$route-gpt56-task Handle this ambiguous change even though the preferred Sol route is unavailable.",
+      "setup": "Expose only Terra or root execution.",
+      "expected_behavior": "The unavailable preferred route remains advisory and does not block execution.",
+      "expected_result": "The root handles the task or selects an available fallback."
+    },
+    {
+      "id": "positive-7-overlapping-writers",
+      "prompt": "$route-gpt56-task Implement two workstreams that both touch the service directory.",
+      "setup": "Give writers overlapping ownership.",
+      "expected_behavior": "The root normally serializes the overlapping writers but retains override authority.",
+      "expected_result": "Changes integrate without concurrent write conflict."
     }
   ],
   "negative": [
     {
-      "id": "negative-1-unenforceable-runtime",
-      "prompt": "$route-gpt56-task Route this change to the best GPT-5.6 agent.",
-      "setup": "Expose a spawn schema with neither agent_type nor both model and reasoning_effort overrides.",
-      "expected_behavior": "The router fails closed before spawning and does not rely on task_name, prose, or inherited root settings to claim enforcement.",
-      "expected_result": "The decision is unsupported with stable runtime reason codes and zero child spawns."
-    },
-    {
-      "id": "negative-2-model-unavailable",
-      "prompt": "$route-gpt56-task Use the selected pinned route; do not substitute another model.",
-      "setup": "Make the selected GPT-5.6 model unavailable to the active account or workspace.",
-      "expected_behavior": "The router records model unavailability and never silently falls back to a different model or effort.",
-      "expected_result": "The node is unsupported or blocked and returns to root/human direction with zero substituted spawns."
-    },
-    {
-      "id": "negative-3-invalid-recursion",
-      "prompt": "$route-gpt56-task Continue by spawning another writer outside the supplied capability.",
-      "setup": "Run as a descendant with a missing, expired, mismatched, scope-exceeding, or depth-exceeding delegation capability.",
-      "expected_behavior": "Descendant re-entry and spawn are rejected. The child cannot self-authorize, increase depth, overlap unknown writes, or communicate a semantic handoff directly to another child.",
-      "expected_result": "No unauthorized spawn occurs; the work returns upward as needs_decision, approval_required, blocked, conflict, or new_work for root handling."
+      "id": "negative-1-context-copy",
+      "prompt": "$route-gpt56-task Use the helper to paste this full diff and parent conversation into every handoff.",
+      "setup": "Supply forbidden diff or parent_conversation fields to build_spawn_prompt.py.",
+      "expected_behavior": "The optional helper rejects forbidden copied context before spawning.",
+      "expected_result": "Zero child spawns and a clear helper-local validation error."
     }
   ]
 }

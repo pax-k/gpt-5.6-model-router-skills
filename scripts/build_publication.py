@@ -27,7 +27,7 @@ PRIVATE_PATTERNS = {
     "GitHub token": re.compile(r"\bgh[opsu]_[A-Za-z0-9]{20,}\b"),
     "OpenAI secret key": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
 }
-ZIP_TIMESTAMP = (2026, 7, 19, 0, 0, 0)
+ZIP_TIMESTAMP = (2026, 7, 21, 0, 0, 0)
 
 
 def included_files() -> list[Path]:

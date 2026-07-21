@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate repository-owned marketplace, plugin, skill, and schema-2 agent contracts."""
+"""Validate the routing-only v0.3 repository contract."""
 
 from __future__ import annotations
 
@@ -12,16 +12,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "gpt-5-6-model-router"
-SKILLS = ("setup-gpt56-model-router", "route-gpt56-task")
-AGENT_DIR = PLUGIN / "skills" / "setup-gpt56-model-router" / "assets" / "agents"
-ROUTE_REFS = PLUGIN / "skills" / "route-gpt56-task" / "references"
-EXPECTED_AGENT_COUNT = 10
-MANAGED_MARKER = re.compile(
-    r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=2$"
-)
-VERSION = re.compile(r"^0\.2\.2\+codex\.20260720\d{6}$")
-VALID_MODELS = {"gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"}
-VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+ROUTE = PLUGIN / "skills" / "route-gpt56-task"
+SETUP = PLUGIN / "skills" / "setup-gpt56-model-router"
+VERSION = re.compile(r"^0\.3\.0\+codex\.20260721\d{6}$")
+MARKER = re.compile(r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=4$")
 
 
 def require(condition: bool, message: str, errors: list[str]) -> None:
@@ -31,92 +25,68 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 def validate() -> list[str]:
     errors: list[str] = []
-    marketplace = json.loads((ROOT / ".agents" / "plugins" / "marketplace.json").read_text())
     manifest = json.loads((PLUGIN / ".codex-plugin" / "plugin.json").read_text())
-
-    require(marketplace.get("name") == "gpt-5-6-model-router-skills", "wrong marketplace name", errors)
-    entries = marketplace.get("plugins", [])
-    require(len(entries) == 1, "marketplace must contain exactly one plugin", errors)
-    if entries:
-        require(entries[0].get("name") == manifest.get("name"), "marketplace and manifest names differ", errors)
-        require(entries[0].get("source", {}).get("path") == "./plugins/gpt-5-6-model-router", "wrong plugin source path", errors)
-
-    require(manifest.get("name") == PLUGIN.name, "manifest name must match plugin directory", errors)
-    require(bool(VERSION.fullmatch(manifest.get("version", ""))), "manifest must use a fresh v0.2.2 codex cachebuster", errors)
+    marketplace = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
+    require(bool(VERSION.fullmatch(manifest.get("version", ""))), "manifest must use a fresh v0.3.0 cachebuster", errors)
+    require(marketplace["plugins"][0]["name"] == manifest["name"], "marketplace and manifest names differ", errors)
     require(manifest.get("skills") == "./skills/", "manifest must expose skills", errors)
-    require("hooks" not in manifest and "apps" not in manifest and "mcpServers" not in manifest, "plugin must not declare hooks, apps, or MCP servers", errors)
-    author = manifest.get("author", {})
-    require(author.get("name") == "Pax Dynamics", "manifest publisher name is missing", errors)
-    require(author.get("email") == "hello@paxdynamics.com", "manifest support email is missing", errors)
-    require(manifest.get("repository") == "https://github.com/pax-k/gpt-5.6-model-router-skills", "manifest repository URL is wrong", errors)
-    interface = manifest.get("interface", {})
-    for field in ("websiteURL", "privacyPolicyURL", "termsOfServiceURL"):
-        require(str(interface.get(field, "")).startswith("https://paxdynamics.com/"), f"manifest publication URL is missing: {field}", errors)
-    logo = PLUGIN / str(interface.get("logo", "")).removeprefix("./")
-    require(logo.is_file(), "manifest logo is missing", errors)
-    composer_icon = PLUGIN / str(interface.get("composerIcon", "")).removeprefix("./")
-    require(composer_icon.is_file(), "manifest composer icon is missing", errors)
-    require("brandColor" not in interface, "live portal rejects interface.brandColor", errors)
+    require(not any(key in manifest for key in ("hooks", "apps", "mcpServers")), "plugin must remain skills-only", errors)
 
-    for skill_name in SKILLS:
-        skill_root = PLUGIN / "skills" / skill_name
-        skill_text = (skill_root / "SKILL.md").read_text()
-        metadata = (skill_root / "agents" / "openai.yaml").read_text()
-        require(skill_text.startswith(f"---\nname: {skill_name}\n"), f"invalid skill frontmatter: {skill_name}", errors)
-        require("allow_implicit_invocation: false" in metadata, f"implicit invocation must be disabled: {skill_name}", errors)
-        require(f"${skill_name}" in metadata, f"default prompt must name skill: {skill_name}", errors)
+    for skill_name in ("route-gpt56-task", "setup-gpt56-model-router"):
+        root = PLUGIN / "skills" / skill_name
+        skill = (root / "SKILL.md").read_text()
+        metadata = (root / "agents/openai.yaml").read_text()
+        require(skill.startswith(f"---\nname: {skill_name}\n"), f"invalid frontmatter: {skill_name}", errors)
+        require(f"${skill_name}" in metadata and "allow_implicit_invocation: false" in metadata, f"invalid metadata: {skill_name}", errors)
 
-    router_skill = (PLUGIN / "skills" / "route-gpt56-task" / "SKILL.md").read_text()
-    for expected in ("autonomous execution within the requested scope", "re-enter", "route_task.py\" decide", "orchestrate.py", "build_spawn_prompt.py", "inspect_spawn.py", "fork_turns: \"none\"", "runtime evidence"):
-        require(expected in router_skill, f"router skill missing v0.2 contract text: {expected}", errors)
+    scripts = ROUTE / "scripts"
+    schemas = ROUTE / "schemas"
+    require(not (scripts / "orchestrate.py").exists(), "orchestrate.py is forbidden in v0.3", errors)
+    require({path.name for path in schemas.glob("*.json")} == {"task-profile.schema.json", "route-recommendation.schema.json"}, "only the two schema-v3 advisory schemas may remain", errors)
+    route_skill = (ROUTE / "SKILL.md").read_text()
+    for text in ('fork_turns: "none"', "best expected value", "may override every", "one-level", "never blocks", "no fixed count", "optional helpers"):
+        require(text.lower() in route_skill.lower(), f"route skill missing autonomy contract: {text}", errors)
+    runtime_evidence = (ROUTE / "references/runtime-evidence.md").read_text()
+    for text in (
+        "inspect_plugin_discovery.py", "plugin/read", "allow_implicit_invocation: false",
+        "absence from the ambient model skill catalog is therefore expected",
+        "--task-name", "--parent-thread-id", "--expected-fork-turns none", "matching parent",
+    ):
+        require(text in runtime_evidence, f"runtime evidence missing persisted fork proof: {text}", errors)
+    discovery_inspector = SETUP / "scripts/inspect_plugin_discovery.py"
+    require(discovery_inspector.is_file(), "plugin discovery inspector is missing", errors)
+    if discovery_inspector.is_file():
+        discovery_text = discovery_inspector.read_text()
+        for text in ("plugin/read", "route-gpt56-task", "setup-gpt56-model-router"):
+            require(text in discovery_text, f"plugin discovery inspector missing contract: {text}", errors)
+    for forbidden in ("delegation capability", "task graph", "task ledger", "terminal JSON"):
+        require(forbidden not in route_skill, f"route skill contains stale orchestration contract: {forbidden}", errors)
 
-    reference_statuses = {
-        "model-effort-research.md": "Status: Implemented",
-        "routing-policy.md": "Status: Implemented",
-        "protocol-schemas.md": "Status: Implemented",
-        "orchestration-workflows.md": "Status: Implemented",
-        "open-design-decisions.md": "Status: Resolved and implemented",
-        "migration-v0.2.md": "Status: Implemented",
-        "runtime-evidence.md": "Status: Implemented",
-    }
-    for filename, status in reference_statuses.items():
-        path = ROUTE_REFS / filename
-        require(path.is_file(), f"missing v0.2 reference: {filename}", errors)
-        if path.is_file():
-            require(status in path.read_text(), f"reference not marked implemented: {filename}", errors)
+    setup = (SETUP / "scripts/setup_router.py").read_text()
+    require('choices=("install", "check", "uninstall")' in setup, "unified setup CLI is missing", errors)
+    require("manage_depth" in setup and "rolled_back" in setup, "setup must coordinate depth with rollback", errors)
 
-    paths = sorted(AGENT_DIR.glob("gpt56-router-*.toml"))
-    require(len(paths) == EXPECTED_AGENT_COUNT, "agent inventory must contain exactly ten schema-2 templates", errors)
-    found_agents: set[str] = set()
-    for path in paths:
-        raw = path.read_bytes()
-        try:
-            parsed = tomllib.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
-            errors.append(f"invalid TOML template {path.name}: {error}")
-            continue
-        first_line = raw.decode("utf-8", errors="replace").splitlines()[0] if raw else ""
-        marker = MANAGED_MARKER.fullmatch(first_line)
-        name = parsed.get("name")
-        require(marker is not None, f"missing schema-2 managed marker: {path.name}", errors)
-        require(isinstance(name, str) and name.startswith("gpt56_router_"), f"invalid agent name: {path.name}", errors)
-        if marker and isinstance(name, str):
-            require(marker.group(1) == name, f"managed marker and TOML name differ: {path.name}", errors)
-        if isinstance(name, str):
-            require(name not in found_agents, f"duplicate agent name: {name}", errors)
-            found_agents.add(name)
-        require(parsed.get("model") in VALID_MODELS, f"invalid model for {path.name}", errors)
-        require(parsed.get("model_reasoning_effort") in VALID_EFFORTS, f"invalid effort for {path.name}", errors)
-        require(bool(parsed.get("description")), f"missing description for {path.name}", errors)
-        require(bool(parsed.get("developer_instructions")), f"missing instructions for {path.name}", errors)
-        instructions = str(parsed.get("developer_instructions", ""))
-        require("autonom" in instructions.lower(), f"missing autonomous execution instruction in {path.name}", errors)
-        require("router-specific approval" in instructions, f"missing no-approval instruction in {path.name}", errors)
-        require('"event":"child_complete"' not in instructions, f"obsolete child event contract in {path.name}", errors)
-        for field in ("event_type", "task_id", "node_id", "agent_path", "discovered_work", "write_scopes", "review"):
-            require(field in instructions, f"missing canonical child event field {field} in {path.name}", errors)
+    templates = sorted((SETUP / "assets/agents").glob("*.toml"))
+    require(len(templates) == 10, "exactly ten schema-4 templates are required", errors)
+    names: set[str] = set()
+    for path in templates:
+        text = path.read_text()
+        raw = tomllib.loads(text)
+        marker = MARKER.fullmatch(text.splitlines()[0])
+        require(marker is not None and marker.group(1) == raw.get("name"), f"invalid schema-4 marker: {path.name}", errors)
+        require(raw.get("name") not in names, f"duplicate role: {raw.get('name')}", errors)
+        names.add(raw.get("name"))
+        instructions = str(raw.get("developer_instructions", ""))
+        for grant in ("Delegation grant: one-level", "Delegation grant: none", "cannot delegate further"):
+            require(grant in instructions, f"role delegation contract missing {grant}: {path.name}", errors)
+        for forbidden in ("terminal", "event_type", "delegation capability", "task_id", "agent_path"):
+            require(forbidden not in instructions, f"stale role instruction {forbidden}: {path.name}", errors)
 
-    require(len(found_agents) == EXPECTED_AGENT_COUNT, "schema-2 agent names must be unique", errors)
+    for removed in ("protocol-schemas.md", "orchestration-workflows.md", "open-design-decisions.md", "migration-v0.2.md"):
+        require(not (ROUTE / "references" / removed).exists(), f"removed v0.2 reference remains: {removed}", errors)
+    require((ROUTE / "references/migration-v0.3.md").is_file(), "migration-v0.3.md is missing", errors)
+    for path in schemas.glob("*.json"):
+        require("ultra" not in path.read_text(), f"Ultra is out of scope but appears in {path.name}", errors)
     return errors
 
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -17,9 +18,8 @@ from pathlib import Path
 
 PLUGIN_ID = "gpt-5-6-model-router"
 MARKER_PATTERN = re.compile(
-    r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=2$"
+    r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=4$"
 )
-CAPABILITY_MARKER_PATTERN = re.compile(r"^# Router capability: may_delegate=(true|false)$")
 NAME_PATTERN = re.compile(r'^name\s*=\s*"([a-z0-9_]+)"\s*$', re.MULTILINE)
 EXPECTED_AGENTS = {
     "gpt56-router-luna-worker.toml": "gpt56_router_luna_worker",
@@ -33,9 +33,29 @@ EXPECTED_AGENTS = {
     "gpt56-router-sol-specialist-max.toml": "gpt56_router_sol_specialist_max",
     "gpt56-router-sol-advisor.toml": "gpt56_router_sol_advisor",
 }
-DELEGATING_AGENTS = {
-    "gpt56_router_terra_explorer",
-    "gpt56_router_sol_engineer",
+LEGACY_SCHEMA2_SHA256 = {
+    "gpt56-router-luna-worker.toml": "7aa785ef640d85f1bc36aa28c561daeba05834e6f4d7eaf057b86c6f876355f9",
+    "gpt56-router-sol-advisor.toml": "ee1132e57aa9f9a161248105a6637f855cba9dd6e482e79e4a8bc0965c30ce27",
+    "gpt56-router-sol-debugger.toml": "0f6d302a56e5e76a9cd8f79ab504e01303dd62e6a539f06a5a50f12af0516be4",
+    "gpt56-router-sol-engineer.toml": "15fba2a305c0fa0a05eff138d3ee4ad196472340e518a5e9b2787d7d6a3bcbbd",
+    "gpt56-router-sol-reviewer.toml": "8a3380a7f689e4b4e39a4208dbb9583f625283bd8e9ba1d4d95f588c205d809a",
+    "gpt56-router-sol-specialist-max.toml": "72665a4846ac502cf69d389c1be553dd148848fdfa1a9e3bf2ffbf8b714b1bcb",
+    "gpt56-router-sol-specialist-xhigh.toml": "a919ab1826853213723286942de50aa5893f3220041c986b89a7b64f902ef0c0",
+    "gpt56-router-terra-explorer.toml": "39b02a9a3884b2f63dfd1de545da8acb98b7072b933cf5f03c8e994685ddf4b0",
+    "gpt56-router-terra-investigator.toml": "4eafd5d895b275fbe90062ec6550523f10d69af42e3984a61eb95dd30f44279f",
+    "gpt56-router-terra-worker.toml": "959660d50170f429903dde653c1e52b9a4fd4318b3fac32208d87950dfd9b83a",
+}
+LEGACY_SCHEMA3_SHA256 = {
+    "gpt56-router-luna-worker.toml": "e5fee6650fccaf09e5dcb27103e466514fe8f0ee4fb447eb1b2d5f04a0a83b5f",
+    "gpt56-router-sol-advisor.toml": "a279198611a9b1a8da4ef4fc950eab970ce38b0f7e2b0849f43ddbaadb0133c3",
+    "gpt56-router-sol-debugger.toml": "416611a0db562afd9105bacfb10923292642cf2bdea5c58fdeb70759706e246c",
+    "gpt56-router-sol-engineer.toml": "5aef9afbbf590d2d532829a3ce83a0dda73caa31385d092d1a22d09398196c33",
+    "gpt56-router-sol-reviewer.toml": "842ba0e8dd15ec35ecbad3d50a911698da1e3886e5d7a1286bba0d82a7ddc07c",
+    "gpt56-router-sol-specialist-max.toml": "dbe70515bc500ef2b477297b66f04d32587ccc0e69afcdb417e67361c9600c03",
+    "gpt56-router-sol-specialist-xhigh.toml": "5a5d9a1968f9fdc5e2a24ea728972449c744f6051f9bedc85996ba793a8ae0c3",
+    "gpt56-router-terra-explorer.toml": "709c8b9d12b4f78d4c9876fd4ef21c7db974bd28f4c2cc7bf58ea11cb6a98afb",
+    "gpt56-router-terra-investigator.toml": "ccad9947c85a586c1b23eff803e829b1d1944858082deca572c3389abd6763a4",
+    "gpt56-router-terra-worker.toml": "d16bc4d811850c3afb08343814b0eaa563da62145319ccda7723ac2d53b1dd51",
 }
 
 
@@ -86,12 +106,7 @@ def migrate_legacy_backups(destination: Path) -> list[str]:
 
 
 def marker_for(agent_name: str) -> str:
-    return f"# Managed by {PLUGIN_ID}; agent={agent_name}; schema=2"
-
-
-def capability_marker_for(agent_name: str) -> str:
-    may_delegate = "true" if agent_name in DELEGATING_AGENTS else "false"
-    return f"# Router capability: may_delegate={may_delegate}"
+    return f"# Managed by {PLUGIN_ID}; agent={agent_name}; schema=4"
 
 
 def validate_owned_content(content: bytes, filename: str) -> tuple[bool, str]:
@@ -106,11 +121,6 @@ def validate_owned_content(content: bytes, filename: str) -> tuple[bool, str]:
     marker = MARKER_PATTERN.fullmatch(first_line)
     if marker is None or marker.group(1) != expected_name:
         return False, "managed marker does not match expected agent identity"
-    second_line = lines[1] if len(lines) > 1 else ""
-    capability_marker = CAPABILITY_MARKER_PATTERN.fullmatch(second_line)
-    if capability_marker is None or second_line != capability_marker_for(expected_name):
-        return False, "router capability marker does not match expected delegation policy"
-
     name = NAME_PATTERN.search(text)
     if name is None or name.group(1) != expected_name:
         return False, "TOML name does not match expected agent identity"
@@ -189,16 +199,23 @@ def check_agents(templates: dict[str, bytes], destination: Path) -> Result:
 
 def install_agents(templates: dict[str, bytes], destination: Path, force: bool) -> Result:
     missing, unchanged, divergent = inspect(templates, destination)
-    if divergent and not force:
+    legacy = [
+        filename for filename in divergent
+        if (destination / filename).is_file()
+        and hashlib.sha256((destination / filename).read_bytes()).hexdigest()
+        in {LEGACY_SCHEMA2_SHA256[filename], LEGACY_SCHEMA3_SHA256[filename]}
+    ]
+    refused = [filename for filename in divergent if filename not in legacy]
+    if refused and not force:
         return Result(
             ok=False,
             command="install",
             target_dir=str(destination),
             unchanged=unchanged,
             missing=missing,
-            divergent=divergent,
+            divergent=refused,
             errors=[
-                "refusing to overwrite divergent files; inspect them and explicitly rerun with --force"
+                "refusing to overwrite unknown or user-modified files; inspect them and explicitly rerun with --force"
             ],
         )
 

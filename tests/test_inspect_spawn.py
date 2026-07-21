@@ -62,6 +62,42 @@ def write_rollout(
     return rollout
 
 
+def write_parent_rollout(
+    root: Path,
+    *,
+    task_name: str = "graph_task__trace_auth",
+    fork_turns: str = "none",
+    timestamp: str = "2026-07-19T10:48:24Z",
+) -> Path:
+    rollout = root / "parent" / "rollout-parent-thread.jsonl"
+    rollout.parent.mkdir(parents=True, exist_ok=True)
+    records = [
+        {
+            "timestamp": "2026-07-19T09:00:00Z",
+            "type": "session_meta",
+            "payload": {"id": "parent-thread", "timestamp": "2026-07-19T09:00:00Z"},
+        },
+        {
+            "timestamp": timestamp,
+            "type": "response_item",
+            "payload": {
+                "type": "custom_tool_call",
+                "name": "spawn_agent",
+                "input": json.dumps(
+                    {
+                        "agent_type": "gpt56_router_terra_explorer",
+                        "fork_turns": fork_turns,
+                        "message": "encrypted-or-redacted",
+                        "task_name": task_name,
+                    }
+                ),
+            },
+        },
+    ]
+    rollout.write_text("\n".join(json.dumps(record) for record in records) + "\n")
+    return rollout
+
+
 def inspect(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
@@ -87,6 +123,54 @@ def inspect(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
 
 
 class InspectSpawnTests(unittest.TestCase):
+    def test_verifies_fork_mode_from_matching_parent_spawn_request(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_parent_rollout(root)
+            write_rollout(
+                root,
+                thread_id="fresh-child",
+                agent_path="/root/graph_task__trace_auth",
+                timestamp="2026-07-19T10:48:25Z",
+                agent_role="gpt56_router_terra_explorer",
+            )
+            completed = inspect(
+                root,
+                "--parent-thread-id", "parent-thread",
+                "--task-name", "graph_task__trace_auth",
+                "--expected-fork-turns", "none",
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["fork_turns"], "none")
+        self.assertEqual(result["expected_fork_turns"], "none")
+        self.assertTrue(result["parent_rollout_path"].endswith("rollout-parent-thread.jsonl"))
+
+    def test_fails_when_parent_spawn_request_used_wrong_fork_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_parent_rollout(root, fork_turns="all")
+            write_rollout(
+                root,
+                thread_id="fresh-child",
+                agent_path="/root/graph_task__trace_auth",
+                timestamp="2026-07-19T10:48:25Z",
+                agent_role="gpt56_router_terra_explorer",
+            )
+            completed = inspect(
+                root,
+                "--parent-thread-id", "parent-thread",
+                "--task-name", "graph_task__trace_auth",
+                "--expected-fork-turns", "none",
+            )
+
+        self.assertEqual(completed.returncode, 1)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result["fork_turns"], "all")
+        self.assertIn("fork mode did not match expected value", result["failure_reasons"])
+
     def test_recovers_child_thread_from_agent_path_and_verifies_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

@@ -85,8 +85,8 @@ def validate() -> list[str]:
 
     positive = reviewer.get("positive", [])
     negative = reviewer.get("negative", [])
-    require(len(positive) == 5, "reviewer suite must contain exactly five positive cases", errors)
-    require(len(negative) == 3, "reviewer suite must contain exactly three negative cases", errors)
+    require(len(positive) == 7, "reviewer suite must contain exactly seven positive cases", errors)
+    require(len(negative) == 1, "reviewer suite must contain exactly one negative case", errors)
     identifiers: set[str] = set()
     for case in [*positive, *negative]:
         require(set(case) == {"id", "prompt", "setup", "expected_behavior", "expected_result"}, f"invalid reviewer case fields: {case.get('id')}", errors)
@@ -105,6 +105,27 @@ def validate() -> list[str]:
 
     require((ROOT / "LICENSE").is_file(), "MIT license file is missing", errors)
     require(manifest.get("license") == "MIT", "manifest license must be MIT", errors)
+    require(str(manifest.get("version", "")).startswith("0.3.0+codex."), "manifest contains stale pre-v0.3 metadata", errors)
+
+    route = PLUGIN / "skills" / "route-gpt56-task"
+    require(not (route / "scripts" / "orchestrate.py").exists(), "publication contains forbidden orchestration CLI", errors)
+    require(
+        {path.name for path in (route / "schemas").glob("*.json")}
+        == {"task-profile.schema.json", "route-recommendation.schema.json"},
+        "publication contains removed orchestration schemas",
+        errors,
+    )
+    setup = (PLUGIN / "skills/setup-gpt56-model-router/scripts/setup_router.py").read_text()
+    require('choices=("install", "check", "uninstall")' in setup, "publication lacks unified setup", errors)
+    for path in (PLUGIN / "skills/setup-gpt56-model-router/assets/agents").glob("*.toml"):
+        text = path.read_text()
+        require("schema=4" in text.splitlines()[0], f"stale agent schema: {path.name}", errors)
+        require("Delegation grant: one-level" in text and "Delegation grant: none" in text, f"bounded delegation contract missing: {path.name}", errors)
+        require("event_type" not in text and "terminal event" not in text.lower(), f"terminal-event language in role: {path.name}", errors)
+        require('model_reasoning_effort = "ultra"' not in text, f"Ultra role is out of scope: {path.name}", errors)
+    route_skill = (route / "SKILL.md").read_text()
+    for expected in ("best expected value", "never blocks", "one-level", "no fixed count"):
+        require(expected in route_skill, f"autonomy contract missing from publication: {expected}", errors)
     return errors
 
 

@@ -12,169 +12,104 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MANAGER = ROOT / "plugins/gpt-5-6-model-router/skills/setup-gpt56-model-router/scripts/manage_agents.py"
 EXPECTED_COUNT = 10
+LEGACY_LUNA = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=2
+# Router capability: may_delegate=false
+name = "gpt56_router_luna_worker"
+description = "Use for clear, repeatable, low-risk work with objective acceptance criteria."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+developer_instructions = """
+Complete only narrow, explicit, repeatable work.
+Preserve the requested scope and avoid architectural decisions.
+Run objective validation and report exact evidence.
+Operate autonomously within the assignment: make the safest reversible evidence-backed assumption and continue. Do not ask the human for routine clarification or router-specific approval.
+Return ambiguity as discovered work only when resolving it would materially exceed the assigned scope or role capability.
+Leaf behavior: do not delegate or spawn subagents, even if a delegation capability is available.
+End with exactly one JSON object and no Markdown fences. Follow the parent-supplied child-event schema exactly, including schema_version, event_type, task_id, node_id, agent_path, summary, outcomes, discovered_work, validation, blockers, questions, risks, write_scopes, and review. Use only an allowed terminal event_type and never claim completion of the parent task.
+"""
+'''
+SCHEMA3_LUNA = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=3
+name = "gpt56_router_luna_worker"
+description = "Clear, repeatable, low-risk work with objective acceptance criteria."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+developer_instructions = """
+Complete the narrow assignment, preserve scope, and avoid architectural decisions.
+Do not delegate or spawn subagents. Run the requested checks.
+Return a concise result covering outcome, changed files, validation, and blockers.
+"""
+'''
 
 
 class ManageAgentsTests(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.home = Path(self.temporary.name)
-        self.environment = os.environ.copy()
-        self.environment["HOME"] = str(self.home)
-        self.environment.pop("CODEX_HOME", None)
+        self.environment = {**os.environ, "HOME": str(self.home)}
+        self.destination = self.home / ".codex" / "agents"
 
-    def tearDown(self) -> None:
+    def tearDown(self):
         self.temporary.cleanup()
 
-    @property
-    def destination(self) -> Path:
-        return self.home / ".codex" / "agents"
-
-    def run_manager(self, command: str, *arguments: str) -> tuple[subprocess.CompletedProcess[str], dict]:
-        completed = subprocess.run(
-            [sys.executable, str(MANAGER), command, *arguments, "--json"],
-            env=self.environment,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+    def run_manager(self, command, *args):
+        completed = subprocess.run([sys.executable, str(MANAGER), command, *args, "--json"], env=self.environment, text=True, capture_output=True)
         return completed, json.loads(completed.stdout)
 
-    def test_clean_install_check_and_idempotent_reinstall(self) -> None:
-        missing, missing_result = self.run_manager("check")
-        self.assertEqual(missing.returncode, 1)
-        self.assertEqual(len(missing_result["missing"]), EXPECTED_COUNT)
-
-        installed, installed_result = self.run_manager("install")
+    def test_clean_install_check_and_uninstall(self):
+        installed, result = self.run_manager("install")
         self.assertEqual(installed.returncode, 0)
-        self.assertEqual(len(installed_result["changed"]), EXPECTED_COUNT)
-        self.assertEqual(installed_result["unchanged"], [])
-
-        checked, checked_result = self.run_manager("check")
+        self.assertEqual(len(result["changed"]), EXPECTED_COUNT)
+        checked, result = self.run_manager("check")
         self.assertEqual(checked.returncode, 0)
-        self.assertEqual(len(checked_result["unchanged"]), EXPECTED_COUNT)
+        self.assertEqual(len(result["unchanged"]), EXPECTED_COUNT)
+        removed, result = self.run_manager("uninstall")
+        self.assertEqual(removed.returncode, 0)
+        self.assertEqual(len(result["changed"]), EXPECTED_COUNT)
 
-        repeated, repeated_result = self.run_manager("install")
-        self.assertEqual(repeated.returncode, 0)
-        self.assertEqual(repeated_result["changed"], [])
-        self.assertEqual(len(repeated_result["unchanged"]), EXPECTED_COUNT)
-
-    def test_divergent_file_refuses_all_mutation(self) -> None:
+    def test_byte_identical_schema2_auto_upgrades_with_backup(self):
         self.destination.mkdir(parents=True)
-        conflict = self.destination / "gpt56-router-luna-worker.toml"
-        conflict.write_text("user-owned\n")
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text(LEGACY_LUNA)
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertEqual(len(result["backed_up"]), 1)
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), LEGACY_LUNA)
+        self.assertIn("schema=4", target.read_text())
 
+    def test_byte_identical_schema3_auto_upgrades_with_backup(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text(SCHEMA3_LUNA)
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), SCHEMA3_LUNA)
+        self.assertIn("schema=4", target.read_text())
+
+    def test_modified_schema2_refuses_without_force(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text(LEGACY_LUNA + "# user edit\n")
         completed, result = self.run_manager("install")
         self.assertEqual(completed.returncode, 1)
-        self.assertIn(conflict.name, result["divergent"])
-        self.assertEqual(conflict.read_text(), "user-owned\n")
-        self.assertEqual(list(self.destination.glob("gpt56-router-*.toml")), [conflict])
+        self.assertIn(target.name, result["divergent"])
+        self.assertIn("user edit", target.read_text())
 
-    def test_force_backs_up_before_replacement(self) -> None:
+    def test_force_backs_up_and_replaces_unknown_file(self):
         self.destination.mkdir(parents=True)
-        conflict = self.destination / "gpt56-router-luna-worker.toml"
-        conflict.write_text("user-owned\n")
-
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text("user-owned\n")
         completed, result = self.run_manager("install", "--force")
         self.assertEqual(completed.returncode, 0)
-        self.assertEqual(len(result["backed_up"]), 1)
-        backup = Path(result["backed_up"][0])
-        self.assertEqual(backup.read_text(), "user-owned\n")
-        self.assertTrue(conflict.read_text().startswith("# Managed by gpt-5-6-model-router;"))
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), "user-owned\n")
+        self.assertIn("schema=4", target.read_text())
 
-    def test_force_backs_up_divergent_schema_one_template(self) -> None:
+    def test_unrelated_agent_file_is_preserved(self):
         self.destination.mkdir(parents=True)
-        conflict = self.destination / "gpt56-router-luna-worker.toml"
-        original = (
-            "# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=1\n"
-            'name = "gpt56_router_luna_worker"\n'
-        )
-        conflict.write_text(original)
-
-        completed, result = self.run_manager("install", "--force")
-        self.assertEqual(completed.returncode, 0)
-        self.assertEqual(Path(result["backed_up"][0]).read_text(), original)
-        self.assertTrue(conflict.read_text().startswith("# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=2"))
-
-    def test_safe_uninstall_migrates_legacy_backup_out_of_agent_discovery(self) -> None:
+        unrelated = self.destination / "my-agent.toml"
+        unrelated.write_text("name='mine'\n")
         self.run_manager("install")
-        backup_dir = self.destination / ".gpt56-router-backups" / "fixture"
-        backup_dir.mkdir(parents=True)
-        (backup_dir / "keep.txt").write_text("keep")
-
-        completed, result = self.run_manager("uninstall")
-        self.assertEqual(completed.returncode, 0)
-        self.assertEqual(len(result["changed"]), EXPECTED_COUNT)
-        self.assertFalse(backup_dir.exists())
-        self.assertEqual(len(result["migrated_backups"]), 1)
-        self.assertTrue((Path(result["migrated_backups"][0]) / "fixture" / "keep.txt").is_file())
-        self.assertEqual(list(self.destination.glob("gpt56-router-*.toml")), [])
-
-    def test_check_detects_and_install_migrates_legacy_backup(self) -> None:
-        self.run_manager("install")
-        legacy = self.destination / ".gpt56-router-backups" / "fixture"
-        legacy.mkdir(parents=True)
-        (legacy / "keep.txt").write_text("keep")
-
-        checked, checked_result = self.run_manager("check")
-        self.assertEqual(checked.returncode, 1)
-        self.assertIn("custom-agent discovery tree", checked_result["errors"][0])
-
-        installed, installed_result = self.run_manager("install")
-        self.assertEqual(installed.returncode, 0)
-        self.assertFalse((self.destination / ".gpt56-router-backups").exists())
-        migrated = Path(installed_result["migrated_backups"][0])
-        self.assertTrue((migrated / "fixture" / "keep.txt").is_file())
-
-    def test_uninstall_refuses_unmanaged_destination_without_partial_deletion(self) -> None:
-        self.run_manager("install")
-        conflict = self.destination / "gpt56-router-terra-worker.toml"
-        conflict.write_text("user-owned\n")
-
-        completed, result = self.run_manager("uninstall")
-        self.assertEqual(completed.returncode, 1)
-        self.assertTrue(result["errors"])
-        self.assertEqual(len(list(self.destination.glob("gpt56-router-*.toml"))), EXPECTED_COUNT)
-
-    def test_uninstall_refuses_incorrect_capability_marker_without_partial_deletion(self) -> None:
-        self.run_manager("install")
-        conflict = self.destination / "gpt56-router-sol-engineer.toml"
-        conflict.write_text(
-            conflict.read_text().replace(
-                "# Router capability: may_delegate=true",
-                "# Router capability: may_delegate=false",
-            )
-        )
-
-        completed, result = self.run_manager("uninstall")
-        self.assertEqual(completed.returncode, 1)
-        self.assertIn("router capability marker", result["errors"][0])
-        self.assertEqual(len(list(self.destination.glob("gpt56-router-*.toml"))), EXPECTED_COUNT)
-
-    def test_uninstall_refuses_customized_managed_file_without_partial_deletion(self) -> None:
-        self.run_manager("install")
-        customized = self.destination / "gpt56-router-terra-worker.toml"
-        customized.write_text(customized.read_text() + "\n# local customization\n")
-
-        completed, result = self.run_manager("uninstall")
-
-        self.assertEqual(completed.returncode, 1)
-        self.assertIn(customized.name, result["divergent"])
-        self.assertIn("refusing to remove divergent files", result["errors"][0])
-        self.assertEqual(len(list(self.destination.glob("gpt56-router-*.toml"))), EXPECTED_COUNT)
-
-    def test_force_uninstall_backs_up_customized_file_before_removal(self) -> None:
-        self.run_manager("install")
-        customized = self.destination / "gpt56-router-terra-worker.toml"
-        customized_content = customized.read_text() + "\n# local customization\n"
-        customized.write_text(customized_content)
-
-        completed, result = self.run_manager("uninstall", "--force")
-
-        self.assertEqual(completed.returncode, 0)
-        self.assertEqual(len(result["backed_up"]), 1)
-        self.assertEqual(Path(result["backed_up"][0]).read_text(), customized_content)
-        self.assertEqual(len(result["changed"]), EXPECTED_COUNT)
-        self.assertEqual(list(self.destination.glob("gpt56-router-*.toml")), [])
+        self.run_manager("uninstall")
+        self.assertEqual(unrelated.read_text(), "name='mine'\n")
 
 
 if __name__ == "__main__":

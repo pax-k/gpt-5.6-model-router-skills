@@ -67,6 +67,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--routing-mode", choices=ROUTING_MODES, required=True)
     parser.add_argument("--thread-id", help="Optional child thread ID cross-check.")
     parser.add_argument("--parent-thread-id", help="Expected parent thread provenance.")
+    parser.add_argument("--task-name", help="Unique task name used in the parent spawn request.")
+    parser.add_argument("--expected-fork-turns", help="Expected fork_turns value from the parent spawn request.")
     parser.add_argument("--expected-depth", type=int)
     parser.add_argument("--expected-sandbox")
     parser.add_argument(
@@ -125,6 +127,63 @@ def read_session_meta(path: Path) -> dict[str, Any] | None:
             if isinstance(record, dict) and record.get("type") == "session_meta":
                 return record
     return None
+
+
+def find_session_rollout(thread_id: str, roots: Iterable[Path]) -> Path | None:
+    matches: list[tuple[float, Path]] = []
+    for path in iter_rollouts(roots):
+        try:
+            record = read_session_meta(path)
+        except OSError:
+            continue
+        if record is None:
+            continue
+        if object_value(record.get("payload")).get("id") == thread_id:
+            matches.append((path.stat().st_mtime, path))
+    if not matches:
+        return None
+    return max(matches, key=lambda match: match[0])[1]
+
+
+def spawn_request_input(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    if payload.get("type") not in ("custom_tool_call", "function_call"):
+        return None
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.endswith("spawn_agent"):
+        return None
+    raw = payload.get("input") if "input" in payload else payload.get("arguments")
+    if isinstance(raw, Mapping):
+        return raw
+    if not isinstance(raw, str):
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, Mapping) else None
+
+
+def find_spawn_request(
+    records: Iterable[Mapping[str, Any]],
+    *,
+    task_name: str,
+    not_before: datetime,
+) -> tuple[Mapping[str, Any] | None, str | None]:
+    matches: list[Mapping[str, Any]] = []
+    for record in records:
+        if record.get("type") != "response_item":
+            continue
+        timestamp = metadata_timestamp(record)
+        if timestamp is None or timestamp < not_before:
+            continue
+        request = spawn_request_input(object_value(record.get("payload")))
+        if request is not None and request.get("task_name") == task_name:
+            matches.append(request)
+    if not matches:
+        return None, "matching parent spawn request not found"
+    if len(matches) > 1:
+        return None, "multiple matching parent spawn requests found"
+    return matches[0], None
 
 
 def metadata_timestamp(record: Mapping[str, Any]) -> datetime | None:
@@ -210,6 +269,7 @@ def inspect(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         "thread_id": args.thread_id,
         "agent_path": args.agent_path,
         "parent_thread_id": None,
+        "parent_rollout_path": None,
         "agent_role": None,
         "expected_agent": args.expected_agent,
         "model": None,
@@ -220,6 +280,9 @@ def inspect(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         "expected_depth": args.expected_depth,
         "sandbox": None,
         "expected_sandbox": args.expected_sandbox,
+        "task_name": args.task_name,
+        "fork_turns": None,
+        "expected_fork_turns": args.expected_fork_turns,
         "routing_mode": args.routing_mode,
         "failure_reasons": [],
     }
@@ -243,6 +306,15 @@ def inspect(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             result["failure_reasons"] = [str(error)]
             return result, 2
     expected_sandbox = args.expected_sandbox
+    if args.expected_fork_turns is not None:
+        if args.expected_fork_turns not in ("none", "all") and not args.expected_fork_turns.isdigit():
+            result["failure_reasons"] = ["expected fork mode must be none, all, or a turn count"]
+            return result, 2
+        if args.task_name is None or args.parent_thread_id is None:
+            result["failure_reasons"] = [
+                "fork verification requires both task name and parent thread ID"
+            ]
+            return result, 2
 
     result.update(
         expected_model=expected_model,
@@ -261,6 +333,27 @@ def inspect(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         result["failure_reasons"] = [str(error)]
         return result, 2
     result.update({key: value for key, value in runtime.items() if key != "parent_provenance_consistent"})
+
+    if args.expected_fork_turns is not None:
+        parent_path = find_session_rollout(args.parent_thread_id, args.sessions_root or default_roots())
+        if parent_path is None:
+            result["failure_reasons"] = ["parent rollout not found for fork verification"]
+            return result, 2
+        try:
+            parent_records = read_records(parent_path)
+        except (OSError, ValueError) as error:
+            result["failure_reasons"] = [str(error)]
+            return result, 2
+        request, request_error = find_spawn_request(
+            parent_records,
+            task_name=args.task_name,
+            not_before=args.not_before,
+        )
+        if request_error is not None or request is None:
+            result["failure_reasons"] = [request_error or "matching parent spawn request not found"]
+            return result, 2
+        result["parent_rollout_path"] = str(parent_path)
+        result["fork_turns"] = request.get("fork_turns")
 
     role_ok = (
         runtime["agent_role"] == args.expected_agent
@@ -285,6 +378,8 @@ def inspect(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         checks.append(("parent thread ID did not match expected parent", runtime["parent_thread_id"] == args.parent_thread_id))
     if expected_sandbox is not None:
         checks.append(("sandbox did not match expected sandbox", runtime["sandbox"] == expected_sandbox))
+    if args.expected_fork_turns is not None:
+        checks.append(("fork mode did not match expected value", result["fork_turns"] == args.expected_fork_turns))
     result["failure_reasons"] = [reason for reason, passed in checks if not passed]
     result["ok"] = not result["failure_reasons"]
     return result, 0 if result["ok"] else 1

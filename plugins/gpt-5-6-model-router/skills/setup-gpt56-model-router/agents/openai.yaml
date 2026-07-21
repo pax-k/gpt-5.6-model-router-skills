@@ -1,6 +1,6 @@
 interface:
   display_name: "Set Up GPT-5.6 Model Router"
-  short_description: "Install autonomous roles and manage depth-two routing"
-  default_prompt: "Use $setup-gpt56-model-router to install and verify autonomous GPT-5.6 routing roles, repair router-owned files when needed, and enable depth-two routing."
+  short_description: "Install schema-4 GPT-5.6 routing"
+  default_prompt: "Use $setup-gpt56-model-router to transactionally install or upgrade ten schema-4 roles, effective depth 2, and the fresh-task canaries."
 policy:
   allow_implicit_invocation: false

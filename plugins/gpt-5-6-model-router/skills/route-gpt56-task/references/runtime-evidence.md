@@ -1,76 +1,43 @@
-# Runtime evidence contract
+# Runtime evidence boundary v0.3
 
-Status: Implemented v0.2 evidence boundary.
+Local tests prove route policy, message budgets, setup safety, and publication structure. They do not prove that Codex exposes the installed explicit skills or that a running task reloaded newly installed custom agents.
 
-Routing claims must name the strongest evidence actually available. Do not
-upgrade a fixture, local setup result, or child self-report into proof that a
-hosted runtime applied a model or role.
+After installation or a schema-2/schema-3 upgrade:
 
-## Evidence levels
-
-| Level | Artifact | Supported claim | Excluded claim |
-| --- | --- | --- | --- |
-| Automated repository proof | Unit tests, 25 workflow fixtures, validator output | Local parsing, policy, state transitions, and expected metadata checks behave according to the versioned contract | A real account/client exposed the required spawn fields or accepted a call |
-| Local setup proof | `manage_agents.py` / `manage_recursion.py` JSON check results | The local templates/config are present, match the manager's ownership rules, or were reversibly changed | The active task has reloaded those files or may delegate recursively |
-| Live runtime proof | Inspector JSON matched to a post-spawn persisted rollout | This actual child route matched expected role/mode, model, effort, and available provenance/sandbox assertions | Other tasks, clients, accounts, workspace policies, or future versions behave the same |
-
-## Live inspection requirements
-
-Live inspection requires a route-specific search boundary and expected route:
+1. Restart Codex or start a fresh task after the host reload boundary.
+2. Run `inspect_plugin_discovery.py` against the configured marketplace. It uses Codex's `plugin/read` API to verify the exact installed version and both enabled explicit skills.
+3. Run `setup_router.py check --json` and confirm ten schema-4 templates plus effective depth at least 2.
+4. Spawn one root child with `fork_turns: "none"` and `Delegation grant: one-level`; have it create one useful descendant carrying `Delegation grant: none`.
+5. Spawn a second no-grant child and verify it remains a leaf.
+6. Record unique task names, the root parent thread ID, canonical agent paths, and a UTC not-before timestamp.
+7. Use `inspect_spawn.py` for each relevant rollout. Verify persisted role, model, reasoning effort, parent chain, depth, and matching parent fork provenance.
+8. Treat sandbox as observational unless the acceptance requires strict isolation and passes `--expected-sandbox`.
+9. Record discovery, setup, one-level, and no-grant checks as install acceptance.
 
 ```bash
-python3 scripts/inspect_spawn.py \
-  --agent-path <agent-path> \
-  --not-before <ISO-8601-time> \
-  --expected-agent <role> \
-  --routing-mode <custom-agent-or-model-override> \
+python3 <setup-skill-directory>/scripts/inspect_plugin_discovery.py \
+  --marketplace-path <absolute-marketplace.json-path> \
   --json
 ```
 
-The optional `--thread-id`, repeatable `--sessions-root`, expected parent,
-depth, and sandbox inputs make the evidence more specific when the runtime
-exposes those values. The inspector output records actual and expected model,
-effort, role, provenance, depth, sandbox, and `failure_reasons`.
+Both skills set `policy.allow_implicit_invocation: false`. Their absence from the ambient model skill catalog is therefore expected and must not be reported as a discovery failure. Explicit availability is the supported contract: verify it through `plugin/read`, then invoke the skill with `$route-gpt56-task` or `$setup-gpt56-model-router` in the composer.
 
-For custom-agent mode, the expected role must match. For model-override mode,
-the role must be absent while model and effort match, because the TOML was not
-applied. A missing identifier-to-rollout bridge means **live proof unavailable**
-and must be reported as such; do not fabricate a thread ID or infer proof from
-agent prose.
+```bash
+python3 <skill-directory>/scripts/inspect_spawn.py \
+  --agent-path /root/<task-name> \
+  --not-before <ISO-8601-UTC> \
+  --expected-agent <role> \
+  --routing-mode custom-agent \
+  --parent-thread-id <parent-thread-id> \
+  --task-name <task-name> \
+  --expected-fork-turns none \
+  --json
+```
 
-## Reporting language
+The child rollout may not persist `fork_turns`. Fork proof therefore comes from the matching parent spawn request, keyed by the required unique task name. If either rollout or the matching request is unavailable, report runtime proof as unavailable rather than inferring success.
 
-Use precise wording:
+Role templates may request `read-only` while the host persists a broader inherited sandbox. That remains behavioral read-only, not sandbox isolation. Claim strict isolation only when an explicit `--expected-sandbox` assertion passes.
 
-- “Automated repository proof passed” for fixtures/validator only.
-- “Local setup check passed” for agent/recursion manager output only.
-- “Live runtime route verified for this child” only after a matching inspector
-  result.
-- “Live runtime proof unavailable” when a compatible spawn schema or rollout
-  bridge is absent.
+Do not inspect ordinary production spawns. Per-task inspection adds latency and context without improving routing after the installation contract is established. Re-run the canaries only after setup changes, runtime upgrades, or troubleshooting evidence suggests drift.
 
-If runtime fields are absent, route failure is the correct result. Never spawn
-an inherited-model child while claiming the selected route was enforced.
-
-## Release acceptance summary
-
-Before the v0.2 public release, the repository passed its full automated suite,
-repository validator, both official skill validators, the official plugin
-validator, local installation checks, reversible recursion checks, and fresh
-Desktop runtime acceptance.
-
-The runtime exercises covered every managed role/model/effort identity, a
-root-managed multi-wave graph, one authorized depth-two owner-to-leaf flow,
-budget return, malformed-event normalization, validation-driven escalation,
-the lower-tier-root advisory gate, and independent consequential review.
-
-One host boundary was observed and retained in the contract: effective sandbox
-permissions can inherit from the parent runtime even when a role template
-declares read-only. Read-only agents are therefore behaviorally constrained by
-their role instructions, while strict sandbox isolation is claimed only when
-the inspector receives and passes an explicit `--expected-sandbox` assertion.
-
-Machine-specific rollout identifiers, local paths, and raw acceptance records
-are deliberately excluded from the published plugin. Maintainers retain those
-artifacts privately and can reproduce the public claims with the repository
-test suite and a fresh runtime acceptance task.
+The fixed child-context floor supplied by Codex remains outside plugin control. Version 0.3 reduces router-generated prompt material and avoids unnecessary workstreams while allowing useful independent fan-out. Measure the 50% raw-token reduction target across a representative complete task, not per child, while holding quality and validation constant.
