@@ -7,11 +7,18 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
-import tomllib
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.9 and 3.10
+    plugin_root = Path(__file__).resolve().parents[3]
+    sys.path.insert(0, str(plugin_root / "vendor"))
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 MARKER = "# Managed by gpt-5-6-model-router; depth; schema=3"

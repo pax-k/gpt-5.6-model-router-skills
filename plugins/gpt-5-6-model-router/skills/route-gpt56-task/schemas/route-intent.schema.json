@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://paxdynamics.com/schemas/gpt56-router/route-intent-v4.json",
+  "title": "GPT-5.6 Governed Route Intent v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "execution_mode", "task_name", "objective", "references", "owned_paths", "constraints", "verification", "fork_turns", "delegation_grant", "commit_authority", "supported_spawn_fields"],
+  "properties": {
+    "schema_version": {"const": 4},
+    "profile": {"$ref": "task-profile.schema.json"},
+    "execution_mode": {"enum": ["root", "delegate", "inherited"]},
+    "task_name": {"type": "string", "minLength": 1},
+    "objective": {"type": "string", "minLength": 1},
+    "references": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "owned_paths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "constraints": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "verification": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "fork_turns": {"anyOf": [{"enum": ["none", "all"]}, {"type": "string", "pattern": "^[1-9][0-9]*$"}, {"type": "integer", "minimum": 1}]},
+    "delegation_grant": {"enum": ["none", "one-level"]},
+    "commit_authority": {"type": "boolean"},
+    "supported_spawn_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "selected_route": {"$ref": "route-recommendation.schema.json#/$defs/route"},
+    "override": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason_code", "rationale", "authority"],
+      "properties": {
+        "reason_code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+        "rationale": {"type": "string", "minLength": 1},
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "reference"],
+          "properties": {
+            "authority": {"enum": ["root", "user", "task_contract", "recorded_failure"]},
+            "reference": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "review_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_intent_id", "manifest_sha256"],
+      "properties": {
+        "source_intent_id": {"type": "string", "minLength": 1},
+        "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

@@ -1,49 +1,117 @@
 ---
 name: route-gpt56-task
-description: Explicitly activate autonomy-first GPT-5.6 routing for a task, with cost-aware model defaults, optional compact delegation, bounded descendant grants, and advisory critical review.
+description: Explicitly activate governed GPT-5.6 routing for a task, preserving root autonomy while enforcing routed protocol, authority, critical-review, ownership, and evidence invariants.
 ---
 
-# Route GPT-5.6 work autonomously
+# Route GPT-5.6 work with governed autonomy
 
-This skill activates only when explicitly invoked. Once active, use autonomous routing judgment for the whole task. The root owns the result and may handle work itself, delegate one or more useful workstreams, and may override every role, effort, fork, and review default or change course when live evidence warrants it.
+This skill activates only when explicitly invoked. It governs the active turn,
+not unrelated delegation in other turns.
 
-Optimize for best expected value: prefer the cheapest adequate execution unless stronger reasoning or parallelism has a meaningful quality or latency benefit. User instructions and runtime or security policy remain authoritative.
+The root owns the result and decides whether delegation has positive expected
+value. Root-direct execution remains valid. Once governance is active, register every root or delegated workstream before doing or spawning that work.
 
-## Decide whether delegation helps
+## Route on two independent axes
 
-Keep work at the root when delegation overhead exceeds its benefit. Delegate when a bounded handoff improves speed, quality, context isolation, or independent verification. Independent work may run concurrently. Writers with overlapping or uncertain ownership normally serialize; disjoint writers may overlap.
+Choose model family from ambiguity, required judgment, and risk:
 
-Use these as defaults, not requirements:
+- Luna for clear, repeatable, low-risk mechanical work.
+- Terra for bounded implementation, exploration, and evidence-led
+  investigation.
+- Sol for ambiguity, architecture, cross-layer work, difficult debugging,
+  critical risk, independent review, and escalation.
 
-- Luna/low for clear mechanical work.
-- Terra/medium for ordinary implementation or exploration; Terra/high for broad investigation.
-- Sol for ambiguity, architecture, debugging, critical risk, review, or escalation.
-- `fork_turns: "none"` with compact path-based context.
-- Independent Sol/high review for critical work.
+Choose effort from exploration and verification burden:
 
-The root may override any default based on task evidence, runtime availability, cost, latency, or user priorities. An unavailable preferred route never blocks the task; handle it at the root or choose any available fallback.
+- low for straightforward latency-sensitive work;
+- medium for ordinary repository reasoning;
+- high for competing hypotheses, complex logic, edge cases, or review;
+- xhigh after recorded lower-route failure;
+- max for explicitly authorized hardest quality-first work.
+
+Do not create routes outside the bundled ten-role frontier. In particular,
+Terra/low remains experimental and is not a v0.4.0 role. See
+`references/model-effort-research.md`.
+
+## Register before execution
+
+Use one workstream at a time:
+
+```bash
+python3 <skill-directory>/scripts/route_guard.py prepare \
+  --input <route-intent-v4.json> \
+  --state-dir <PLUGIN_DATA>/governor \
+  --session-id <session-id> \
+  --turn-id <turn-id> \
+  --json
+```
+
+The `UserPromptSubmit` hook supplies the active state directory, session, and
+turn values. Construct a schema-v4 task profile and route intent. Schema v3 is
+rejected; follow `references/migration-v0.4.md`.
+
+- For root-direct execution, use `execution_mode: "root"` and register before
+  changing state.
+- For delegation, use `execution_mode: "delegate"` and pass the emitted
+  `spawn_request` to `Agent` exactly.
+- For inherited full-history execution, use `execution_mode: "inherited"`,
+  `fork_turns: "all"`, an accountable override, and no custom role/model/effort
+  fields.
+
+Do not paste source files, diffs, logs, the parent conversation, `AGENTS.md`, or
+repository documentation into handoffs. Send objectives, canonical paths,
+owned paths, essential constraints, and verification commands. Never include
+credentials or secret-like values.
+
+## Authority and overrides
+
+Ordinary noncritical route choices remain advisory, but selecting a different
+route requires an override containing reason code, rationale, authority, and
+reference.
+
+`quality_first`, xhigh, max, critical-floor exceptions, critical root-direct
+execution without provable effort, or skipped critical review require `user`,
+`task_contract`, or `recorded_failure` authority. Root rationale alone is not
+sufficient.
 
 ## Delegate compactly
 
-Send objective, canonical references, owned paths, essential constraints, and focused verification. Do not paste source files, diffs, logs, the parent conversation, `AGENTS.md`, or repository documentation unless direct context is genuinely more valuable than a path-based handoff.
+Children are leaves unless the intent grants exactly `one-level`. A granted
+child may register bounded descendants, but every descendant must use
+`Delegation grant: none`.
 
-Children are leaves by default. Include the exact line `Delegation grant: one-level` only when a child can usefully create bounded descendants. That child must give every descendant `Delegation grant: none`; descendants cannot delegate further. Open recursion is out of scope.
+Parallel writers require disjoint owned paths. Serialize equal, ancestor, or
+descendant ownership. Children have no commit, tag, or push authority unless
+their intent explicitly grants it.
 
-Prefer concise action updates only when agents start, materially escalate, hit blockers, or return important findings. Do not expose route scores or routing paperwork by default.
+## Bind critical review
 
-## Review while value remains
-
-Critical work normally receives independent Sol/high review, but the root retains override authority. Repair and review cycles have no fixed count: continue only while another cycle has positive expected value. Run focused verification in workstreams and the appropriate integrated gate after changes converge.
-
-## Optional helpers
-
-Production routing does not require schemas or scripts. For evaluation or troubleshooting only:
+Critical execution uses at least Sol/medium unless privileged authority records
+an exception. After the change converges, snapshot its canonical owned paths:
 
 ```bash
-python3 <skill-directory>/scripts/route_task.py recommend --input task-profile.json --json
-python3 <skill-directory>/scripts/build_spawn_prompt.py --input handoff.json --json
+python3 <skill-directory>/scripts/route_guard.py snapshot \
+  --state-dir <PLUGIN_DATA>/governor \
+  --session-id <session-id> \
+  --turn-id <turn-id> \
+  --intent-id <source-intent-id> \
+  --json
 ```
 
-The first emits advisory schema v3 and never orders delegation. The second validates compact routed handoffs, accepts any bundled `selected_route`, defaults to an empty fork, permits positive bounded forks, rejects full-history forks that would inherit the parent route, and supports `Delegation grant: none` or `one-level`. The root may bypass either helper.
+Register a separate Sol/high reviewer with `review_target.source_intent_id` and
+the returned manifest SHA-256. Any subsequent owned-path change invalidates the
+review.
 
-See `references/routing-policy.md` for advisory defaults and `references/runtime-evidence.md` for install-time canaries.
+Before closeout, run `route_guard.py audit` or `status`. Structural violations,
+unfinished routed work, and missing or stale critical review block closeout.
+Unavailable runtime metadata is reported as a warning and must not be claimed
+as proof.
+
+## Boundaries
+
+Trusted hooks are enforceable guardrails, not an adversarial security boundary.
+Specialized tool paths may bypass normal hooks, hooks can be disabled, and
+subagents inherit the active sandbox and approval state.
+
+See `references/routing-policy.md` for enforced versus advisory rules and
+`references/runtime-evidence.md` for fresh-install acceptance.

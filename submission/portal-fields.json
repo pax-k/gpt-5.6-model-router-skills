@@ -3,7 +3,7 @@
   "plugin_type": "skills_only",
   "name": "GPT-5.6 Model Router",
   "short_description": "Route work to GPT-5.6 agents",
-  "long_description": "GPT-5.6 Model Router is an explicit autonomy-first Codex plugin. The root decides whether delegation is worthwhile and may override every Luna, Terra, Sol, effort, fork, review, or fallback default. Optional schema-v3 tools provide advisory recommendations and compact handoffs without blocking execution. Ten schema-4 roles are leaves by default, while an exact one-level grant permits bounded depth-2 leaf descendants. Unified transactional setup safely enables effective depth 2, migrates byte-identical older templates, and preserves unrelated configuration. The plugin has no MCP server, hosted backend, connector, analytics, credentials, or implicit invocation.",
+  "long_description": "GPT-5.6 Model Router is an explicitly invoked governed Codex plugin. Pure schema-v4 policy recommends Luna, Terra, or Sol routes while the root retains authority over ordinary work. Trusted bundled hooks validate route intents before Agent execution, constrain delegation and write ownership, and require hash-bound independent Sol/high review for critical work unless an authorized exception is recorded. Ten schema-v5 roles are leaves by default, with an exact one-level grant permitting bounded depth-2 descendants. Transactional setup enables depth two and preserves unrelated configuration. Hook state remains local under PLUGIN_DATA and stores hashes and route metadata, never raw prompts, messages, diffs, tool output, or secrets. The plugin has no MCP server, hosted backend, connector, analytics, or credential collection.",
   "category": "Productivity",
   "developer": "Pax Dynamics",
   "website_url": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
@@ -13,12 +13,24 @@
   "repository_url": "https://github.com/pax-k/gpt-5.6-model-router-skills",
   "logo_path": "plugins/gpt-5-6-model-router/assets/logo.png",
   "starter_prompts": [
-    "$setup-gpt56-model-router Install or upgrade the schema-4 router and depth capability.",
-    "$route-gpt56-task Handle this bounded repository change with autonomous cost-aware routing.",
-    "$route-gpt56-task Decide whether these independent workstreams benefit from parallel delegation.",
-    "$route-gpt56-task Implement this critical authorization fix with advisory independent review."
+    "$setup-gpt56-model-router Install or upgrade the governed router and trust its hooks.",
+    "$route-gpt56-task Handle this task with governed cost-aware GPT-5.6 routing.",
+    "$route-gpt56-task Handle this critical change with verified independent review."
   ],
-  "release_version": "0.3.0",
+  "release_version": "0.4.0",
+  "bundled_hooks": {
+    "included": true,
+    "trust_required": true,
+    "events": [
+      "UserPromptSubmit",
+      "PreToolUse",
+      "PostToolUse",
+      "SubagentStart",
+      "SubagentStop",
+      "Stop"
+    ],
+    "local_state": "PLUGIN_DATA only; hashes and route metadata; no raw prompts, messages, diffs, tool output, or secrets"
+  },
   "availability": "All countries and regions where OpenAI permits plugin distribution",
   "support_language": "English"
 }

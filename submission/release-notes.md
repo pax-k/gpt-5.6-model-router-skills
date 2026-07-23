@@ -1,14 +1,14 @@
-# GPT-5.6 Model Router v0.3.0
+# GPT-5.6 Model Router v0.4.0
 
-This release replaces mandatory deterministic routing with an explicit autonomy-first guidance layer.
+This release adds governed, explicitly activated routing while preserving root autonomy for ordinary work.
 
-- One explicit invocation activates autonomous routing for the task; the root may work directly or delegate useful workstreams.
-- Luna, Terra, Sol, empty-fork, writer coordination, escalation, and critical-review choices are defaults the root may override.
-- Recommendation schema v3 preserves unavailable preferred routes without blocking execution.
-- The compact handoff helper accepts root-selected bundled routes, empty or positive bounded forks, and exact `none` or `one-level` delegation grants; inherited full-history spawns remain outside the routed helper.
-- Ten schema-4 roles remain leaves by default; a granted child may create only depth-2 leaves.
-- Unified transactional setup installs roles and enables `agents.max_depth = 2`, preserving higher values and unrelated edits.
-- Byte-identical schema-2/schema-3 roles and trusted legacy depth state migrate safely after backup.
-- Review and repair continue only while expected value justifies another cycle.
+- Exact `$route-gpt56-task` invocation activates local governed state; unrelated Agent use remains untouched.
+- Three clean-break schema-v4 contracts separate task facts, pure recommendations, and execution authority.
+- Trusted bundled hooks deny malformed or unmatched Agent calls before runtime, enforce bounded delegation and disjoint writer ownership, and retain only hashes and route metadata under `PLUGIN_DATA`.
+- Ordinary route choices remain advisory with accountable override evidence. Critical work has a Sol/medium floor and requires separate hash-bound Sol/high review unless explicit authority records an exception.
+- Ten schema-v5 custom roles implement the curated Luna/low, Terra/medium-high, and Sol/medium-high-xhigh-max catalog.
+- Root-direct work remains valid but must register an intent. Full-history inheritance is limited to explicitly recorded inherited-root execution without custom role or model fields.
+- Transactional setup verifies Python 3.9+, stable hooks, and stable multi-agent support, installs the role catalog, and enables effective depth two. Hook trust remains a manual `/hooks` action.
+- Reproducible packaging uses tag-derived `SOURCE_DATE_EPOCH`, retains bundled hooks and dependency licenses, and emits a SHA-256 sidecar.
 
-The public historical release remains at tag `v0.2.2`.
+Schema-v3 inputs receive an explicit v0.4 migration error. A hook-free or hooks-stripped portal package is not an acceptable substitute.

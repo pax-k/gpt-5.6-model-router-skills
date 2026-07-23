@@ -13,7 +13,23 @@ import setup_router  # noqa: E402
 class SetupRouterTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.home = Path(self.temp.name)
-        self.env = {**os.environ, "HOME": str(self.home)}
+        self.synthetic_bin = self.home / "bin"; self.synthetic_bin.mkdir()
+        synthetic_codex = self.synthetic_bin / "codex"
+        synthetic_codex.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "if sys.argv[1:] == ['features', 'list']:\n"
+            "    print('hooks stable true')\n"
+            "    print('multi_agent stable true')\n"
+            "    raise SystemExit(0)\n"
+            "raise SystemExit(2)\n"
+        )
+        synthetic_codex.chmod(0o755)
+        self.env = {
+            **os.environ,
+            "HOME": str(self.home),
+            "PATH": f"{self.synthetic_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
         self.codex = self.home / ".codex"; self.config = self.codex / "config.toml"
 
     def tearDown(self): self.temp.cleanup()
@@ -27,7 +43,7 @@ class SetupRouterTests(unittest.TestCase):
     def test_clean_install_check_uninstall(self):
         installed, result = self.run_setup("install")
         self.assertEqual(installed.returncode, 0, result); self.assertEqual(result["depth"]["effective_depth"], 2)
-        self.assertIn("schema=4", next((self.codex / "agents").glob("*.toml")).read_text().splitlines()[0])
+        self.assertIn("schema=5", next((self.codex / "agents").glob("*.toml")).read_text().splitlines()[0])
         checked, result = self.run_setup("check"); self.assertEqual(checked.returncode, 0, result)
         removed, result = self.run_setup("uninstall"); self.assertEqual(removed.returncode, 0, result)
         self.assertFalse(self.config.exists()); self.assertFalse(list((self.codex / "agents").glob("gpt56-router-*.toml")))
@@ -90,6 +106,35 @@ class SetupRouterTests(unittest.TestCase):
         self.assertFalse(result.ok); self.assertTrue(result.rolled_back)
         self.assertFalse(self.config.exists())
         self.assertFalse(list((self.codex / "agents").glob("gpt56-router-*.toml")))
+
+    def test_runtime_feature_gate_requires_stable_enabled_features(self):
+        completed = subprocess.CompletedProcess(
+            ["codex", "features", "list"],
+            0,
+            stdout="hooks stable true\nmulti_agent stable true\n",
+            stderr="",
+        )
+        with mock.patch.object(setup_router.subprocess, "run", return_value=completed):
+            runtime = setup_router.inspect_runtime("/synthetic/codex")
+        self.assertTrue(runtime["ok"])
+        self.assertTrue(runtime["features"]["hooks"]["enabled"])
+
+        disabled = subprocess.CompletedProcess(
+            ["codex", "features", "list"],
+            0,
+            stdout="hooks experimental false\nmulti_agent stable true\n",
+            stderr="",
+        )
+        with mock.patch.object(setup_router.subprocess, "run", return_value=disabled):
+            runtime = setup_router.inspect_runtime("/synthetic/codex")
+        self.assertFalse(runtime["ok"])
+        self.assertIn("Codex hooks must be stable and enabled", runtime["errors"])
+
+    def test_runtime_feature_gate_reports_missing_cli(self):
+        with mock.patch.object(setup_router.shutil, "which", return_value=None):
+            runtime = setup_router.inspect_runtime()
+        self.assertFalse(runtime["ok"])
+        self.assertIn("Codex CLI is unavailable", runtime["errors"][0])
 
 
 if __name__ == "__main__": unittest.main()

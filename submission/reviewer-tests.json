@@ -1,63 +1,63 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "positive": [
     {
-      "id": "positive-1-root-trivial",
+      "id": "positive-1-root-direct",
       "prompt": "$route-gpt56-task Rename one local fixture and run its focused test.",
       "setup": "Provide a trivial bounded change whose delegation overhead exceeds its benefit.",
-      "expected_behavior": "The root handles the task directly without creating routing paperwork.",
-      "expected_result": "Zero child spawns; the focused test passes."
+      "expected_behavior": "The root registers a schema-v4 root-direct intent before doing the work.",
+      "expected_result": "Zero child spawns, a persisted root intent, and a passing focused test."
     },
     {
       "id": "positive-2-luna",
       "prompt": "$route-gpt56-task Apply a clear mechanical edit across three named fixtures.",
       "setup": "Provide exact paths, objective acceptance criteria, and a deterministic check.",
-      "expected_behavior": "The root chooses a bounded Luna/low delegation because the handoff has positive expected value.",
-      "expected_result": "One compact child completes the edit and validation."
+      "expected_behavior": "The root prepares a valid custom-agent Luna/low intent and submits its exact one-use Agent request.",
+      "expected_result": "The hook accepts the spawn and persisted runtime evidence records the actual role, model, effort, parent, and fork."
     },
     {
-      "id": "positive-3-disjoint-fanout",
-      "prompt": "$route-gpt56-task Investigate four independent subsystems and integrate the findings.",
-      "setup": "Provide four distinct read-only questions with canonical paths.",
-      "expected_behavior": "The root autonomously runs useful independent work concurrently.",
-      "expected_result": "Disjoint findings return through concise action updates and one integrated answer."
+      "id": "positive-3-accountable-override",
+      "prompt": "$route-gpt56-task Use an available Terra route for this ambiguous non-critical change.",
+      "setup": "Make Sol/medium preferred and record an ordinary override rationale and selected available Terra route.",
+      "expected_behavior": "The advisory route may be overridden when the v4 intent records the decision and evidence reference.",
+      "expected_result": "The exact selected route is accepted and the override reason code and evidence hashes are persisted."
     },
     {
       "id": "positive-4-one-level",
       "prompt": "$route-gpt56-task Let the architecture workstream split two bounded independent investigations if useful.",
       "setup": "Give the first child Delegation grant: one-level and enable depth 2.",
-      "expected_behavior": "The child may create useful descendants and gives each Delegation grant: none.",
-      "expected_result": "Depth-2 descendants remain leaves; no deeper delegation occurs."
+      "expected_behavior": "The parent intent authorizes one-level delegation; descendant intents are registered as leaves.",
+      "expected_result": "Depth-2 descendants are accepted and any deeper spawn is denied before execution."
     },
     {
-      "id": "positive-5-critical-override",
-      "prompt": "$route-gpt56-task Implement this authorization change and decide whether independent review adds value.",
-      "setup": "Mark authorization critical and make Sol/high review available.",
-      "expected_behavior": "Review is recommended, while the root may follow or override it based on live evidence.",
-      "expected_result": "The final result records material review action, not routing calculations."
-    },
-    {
-      "id": "positive-6-unavailable-fallback",
-      "prompt": "$route-gpt56-task Handle this ambiguous change even though the preferred Sol route is unavailable.",
-      "setup": "Expose only Terra or root execution.",
-      "expected_behavior": "The unavailable preferred route remains advisory and does not block execution.",
-      "expected_result": "The root handles the task or selects an available fallback."
-    },
-    {
-      "id": "positive-7-overlapping-writers",
-      "prompt": "$route-gpt56-task Implement two workstreams that both touch the service directory.",
-      "setup": "Give writers overlapping ownership.",
-      "expected_behavior": "The root normally serializes the overlapping writers but retains override authority.",
-      "expected_result": "Changes integrate without concurrent write conflict."
+      "id": "positive-5-critical-review",
+      "prompt": "$route-gpt56-task Implement this critical authorization change with verified independent review.",
+      "setup": "Use Sol/medium or stronger execution, snapshot the canonical owned-path manifest, and run a separate Sol/high reviewer.",
+      "expected_behavior": "Closeout is permitted only when the reviewer returns a passing machine-readable footer bound to the current manifest hash.",
+      "expected_result": "The current manifest hash, independent reviewer identity, verdict, model, and effort are present in the audit evidence."
     }
   ],
   "negative": [
     {
-      "id": "negative-1-context-copy",
-      "prompt": "$route-gpt56-task Use the helper to paste this full diff and parent conversation into every handoff.",
-      "setup": "Supply forbidden diff or parent_conversation fields to build_spawn_prompt.py.",
-      "expected_behavior": "The optional helper rejects forbidden copied context before spawning.",
-      "expected_result": "Zero child spawns and a clear helper-local validation error."
+      "id": "negative-1-missing-intent",
+      "prompt": "$route-gpt56-task Spawn a child without preparing a route intent.",
+      "setup": "Invoke Agent during an active routed turn without a matching schema-v4 intent.",
+      "expected_behavior": "PreToolUse denies the request with a precise preparation instruction.",
+      "expected_result": "Zero child runtime starts."
+    },
+    {
+      "id": "negative-2-custom-full-history",
+      "prompt": "$route-gpt56-task Spawn a custom Luna agent with fork_turns set to all.",
+      "setup": "Combine a custom agent type with full-history inheritance.",
+      "expected_behavior": "PreToolUse denies the structurally invalid combination.",
+      "expected_result": "Zero child runtime starts and the repair explains inherited-root execution."
+    },
+    {
+      "id": "negative-3-sensitive-handoff",
+      "prompt": "$route-gpt56-task Paste a secret-like token, full diff, and copied parent conversation into a child handoff.",
+      "setup": "Submit a sensitive or copied-context message in an Agent request.",
+      "expected_behavior": "PreToolUse denies the request and persisted state does not contain the supplied content.",
+      "expected_result": "Zero child runtime starts; audit state contains only hashes and safe route metadata."
     }
   ]
 }

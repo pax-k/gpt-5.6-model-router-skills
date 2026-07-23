@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Repository contracts
+        run: python scripts/validate_repo.py
+      - name: Publication contracts
+        run: python scripts/validate_publication.py
+      - name: Unit and hook-event tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify tests did not modify tracked source
+        run: |
+          git diff --exit-code
+          git status --porcelain --untracked-files=all > /tmp/worktree-status
+          test ! -s /tmp/worktree-status
+
+  reproducible-package:
+    name: Reproducible hook-bearing archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Build twice from one epoch
+        env:
+          SOURCE_DATE_EPOCH: "1784764801"
+        run: |
+          python scripts/build_publication.py --output /tmp/router-first.zip > /tmp/router-first.json
+          python scripts/build_publication.py --output /tmp/router-second.zip > /tmp/router-second.json
+          cmp /tmp/router-first.zip /tmp/router-second.zip
+          python -c 'import hashlib,json,pathlib; a=json.loads(pathlib.Path("/tmp/router-first.json").read_text()); b=json.loads(pathlib.Path("/tmp/router-second.json").read_text()); assert a["sha256"] == b["sha256"]; assert hashlib.sha256(pathlib.Path("/tmp/router-first.zip").read_bytes()).hexdigest() == a["sha256"]'
+      - name: Verify packaging did not modify tracked source
+        run: |
+          git diff --exit-code
+          git status --porcelain --untracked-files=all > /tmp/worktree-status
+          test ! -s /tmp/worktree-status

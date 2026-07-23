@@ -1,19 +1,20 @@
 # GPT-5.6 Model Router
 
-An explicit, autonomy-first Codex routing plugin. Once `$route-gpt56-task` is invoked, the root decides whether delegation is worthwhile, chooses and coordinates useful workstreams, and may override every model, effort, fork, review, or escalation default.
-
-The defaults target best expected value: cheapest adequate execution unless stronger reasoning or parallelism brings meaningful quality or latency benefit.
+An explicit, governed Codex routing plugin. Governance activates only when a
+turn contains `$route-gpt56-task`; unrelated delegation is untouched. The root
+still decides whether delegation is useful and owns every outcome, while hooks
+enforce routed protocol, authority, critical-review, and evidence invariants.
 
 ## What it includes
 
-- Advisory recommendation schema v3 for Luna, Terra, and Sol routes.
-- Ten pinned schema-4 roles with a default-leaf and exact one-level descendant contract.
-- An optional compact routed-handoff helper supporting empty or bounded forks; full-history spawns inherit the parent route and remain outside the helper.
-- Advisory independent Sol/high review for critical work, with no fixed repair-cycle limit.
-- Unified transactional setup for role templates and `agents.max_depth >= 2`.
-- Safe schema-2/schema-3 migration, ownership-aware uninstall, and install-time runtime inspection.
-
-The router does not require production scoring, mandatory delegation, fixed fan-out, exact-route compliance, or fail-closed fallbacks. Scripts are optional evaluation and troubleshooting tools.
+- Validated schema-v4 task profile, recommendation, and route-intent contracts.
+- Ten pinned schema-v5 roles on a curated Luna/Terra/Sol effort frontier.
+- Plugin-bundled lifecycle hooks that govern routed `Agent` calls before
+  execution.
+- Atomic, privacy-minimized evidence under `PLUGIN_DATA`.
+- Manifest-bound independent Sol/high review for critical work.
+- Transactional setup for role templates and effective depth two.
+- Python 3.9+ support through a bundled TOML compatibility implementation.
 
 ## Use
 
@@ -23,6 +24,15 @@ $route-gpt56-task Implement this change using autonomous cost-aware routing.
 ```
 
 Both skills remain explicit-only. The root model is unchanged.
+
+Hook execution requires review and trust through `/hooks`. Installation never
+auto-trusts plugin hooks.
+
+## Design and release status
+
+- [v0.4.0 implementation and release plan](docs/release-v0.4.0-plan.md)
+- [Model and effort decision](plugins/gpt-5-6-model-router/skills/route-gpt56-task/references/model-effort-research.md)
+- [Routing policy](plugins/gpt-5-6-model-router/skills/route-gpt56-task/references/routing-policy.md)
 
 ## Development validation
 
@@ -34,4 +44,4 @@ python3 scripts/build_publication.py
 python3 plugins/gpt-5-6-model-router/skills/setup-gpt56-model-router/scripts/inspect_plugin_discovery.py --marketplace-path .agents/plugins/marketplace.json --json
 ```
 
-The historical orchestration release remains available at tag `v0.2.2`. See the v0.3 migration guide in the route skill.
+The historical autonomy-first release remains available at tag `v0.3.0`.

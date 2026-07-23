@@ -2,7 +2,7 @@
   "name": "gpt-5-6-model-router-skills",
   "interface": {
     "displayName": "GPT-5.6 Model Router Skills",
-    "shortDescription": "Autonomy-first GPT-5.6 routing and setup"
+    "shortDescription": "Governed GPT-5.6 routing and setup"
   },
   "plugins": [
     {

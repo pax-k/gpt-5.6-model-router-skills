@@ -18,7 +18,7 @@ from pathlib import Path
 
 PLUGIN_ID = "gpt-5-6-model-router"
 MARKER_PATTERN = re.compile(
-    r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=4$"
+    r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=5$"
 )
 NAME_PATTERN = re.compile(r'^name\s*=\s*"([a-z0-9_]+)"\s*$', re.MULTILINE)
 EXPECTED_AGENTS = {
@@ -56,6 +56,18 @@ LEGACY_SCHEMA3_SHA256 = {
     "gpt56-router-terra-explorer.toml": "709c8b9d12b4f78d4c9876fd4ef21c7db974bd28f4c2cc7bf58ea11cb6a98afb",
     "gpt56-router-terra-investigator.toml": "ccad9947c85a586c1b23eff803e829b1d1944858082deca572c3389abd6763a4",
     "gpt56-router-terra-worker.toml": "d16bc4d811850c3afb08343814b0eaa563da62145319ccda7723ac2d53b1dd51",
+}
+LEGACY_SCHEMA4_SHA256 = {
+    "gpt56-router-luna-worker.toml": "8bc78b6f8e3b8ed3735802b796b2bfb51206d2e28b1dbbc45b18d1805d67d907",
+    "gpt56-router-sol-advisor.toml": "71e012b0c803fe057c8ce29f83773850fe200891b5ab6e341b51e76bc7e36777",
+    "gpt56-router-sol-debugger.toml": "4497c3724f805625e9f7ff8df671282a6aad7b50ae6c62187645b05381442a4d",
+    "gpt56-router-sol-engineer.toml": "59e776270a5193f4c4c5c673ce6adffc45e3bef8d185329b61ac19c07d523fa4",
+    "gpt56-router-sol-reviewer.toml": "13a32b22db27deb8338861a88b53d5dac1e060cef1bf13d4b559769f35a3cc1d",
+    "gpt56-router-sol-specialist-max.toml": "530637ebede2275d4cbc68bea8954272d93de65da69d5aad07bea4086017576d",
+    "gpt56-router-sol-specialist-xhigh.toml": "a329e0cc6811307adf3f6d6a5b34f7cc9b82f42fe059d67721f86b59ba53e90c",
+    "gpt56-router-terra-explorer.toml": "2b243e6dea270ce843785137a82ad84da30238067bdc5a892afe82dc883315cd",
+    "gpt56-router-terra-investigator.toml": "39ad180f6930c214ac6a8f53fb5e03b60635929a4b7d28a0c1cfb69e23b9bfd3",
+    "gpt56-router-terra-worker.toml": "f2e869e226bc7f09d40077eb0d6856f28704acf61806a182f1080c9d93e52384",
 }
 
 
@@ -106,7 +118,7 @@ def migrate_legacy_backups(destination: Path) -> list[str]:
 
 
 def marker_for(agent_name: str) -> str:
-    return f"# Managed by {PLUGIN_ID}; agent={agent_name}; schema=4"
+    return f"# Managed by {PLUGIN_ID}; agent={agent_name}; schema=5"
 
 
 def validate_owned_content(content: bytes, filename: str) -> tuple[bool, str]:
@@ -203,7 +215,11 @@ def install_agents(templates: dict[str, bytes], destination: Path, force: bool) 
         filename for filename in divergent
         if (destination / filename).is_file()
         and hashlib.sha256((destination / filename).read_bytes()).hexdigest()
-        in {LEGACY_SCHEMA2_SHA256[filename], LEGACY_SCHEMA3_SHA256[filename]}
+        in {
+            LEGACY_SCHEMA2_SHA256[filename],
+            LEGACY_SCHEMA3_SHA256[filename],
+            LEGACY_SCHEMA4_SHA256[filename],
+        }
     ]
     refused = [filename for filename in divergent if filename not in legacy]
     if refused and not force:

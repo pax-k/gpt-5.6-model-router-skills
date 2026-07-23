@@ -1,0 +1,85 @@
+{
+  "description": "Govern explicit GPT-5.6 router turns without affecting unrelated Codex delegation.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event UserPromptSubmit",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event UserPromptSubmit",
+            "timeout": 15,
+            "statusMessage": "Activating GPT-5.6 router governance"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event PreToolUse",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event PreToolUse",
+            "timeout": 15,
+            "statusMessage": "Checking routed tool authority"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event PostToolUse",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event PostToolUse",
+            "timeout": 15,
+            "statusMessage": "Recording routed spawn evidence"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event SubagentStart",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event SubagentStart",
+            "timeout": 15,
+            "statusMessage": "Binding routed subagent evidence"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event SubagentStop",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event SubagentStop",
+            "timeout": 15,
+            "statusMessage": "Validating routed subagent evidence"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/skills/route-gpt56-task/scripts/route_guard.py\" hook --event Stop",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\skills\\route-gpt56-task\\scripts\\route_guard.py\" hook --event Stop",
+            "timeout": 30,
+            "statusMessage": "Checking GPT-5.6 router closeout"
+          }
+        ]
+      }
+    ]
+  }
+}

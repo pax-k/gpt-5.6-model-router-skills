@@ -1,0 +1,35 @@
+{
+  "router_prompt": {
+    "hook_event_name": "UserPromptSubmit",
+    "session_id": "fixture-session",
+    "turn_id": "fixture-turn",
+    "prompt": "$route-gpt56-task Complete the synthetic fixture task.",
+    "transcript_path": "fixture-root.jsonl",
+    "cwd": ".",
+    "model": "gpt-5.6-sol"
+  },
+  "ordinary_prompt": {
+    "hook_event_name": "UserPromptSubmit",
+    "session_id": "fixture-session",
+    "turn_id": "ordinary-turn",
+    "prompt": "Delegate this ordinary task if useful.",
+    "transcript_path": "fixture-root.jsonl",
+    "cwd": ".",
+    "model": "gpt-5.6-sol"
+  },
+  "invalid_agent": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "fixture-session",
+    "turn_id": "fixture-turn",
+    "transcript_path": "fixture-root.jsonl",
+    "cwd": ".",
+    "tool_name": "Agent",
+    "tool_use_id": "fixture-tool",
+    "tool_input": {
+      "task_name": "unregistered",
+      "message": "No prepared intent.",
+      "fork_turns": "none",
+      "agent_type": "default"
+    }
+  }
+}

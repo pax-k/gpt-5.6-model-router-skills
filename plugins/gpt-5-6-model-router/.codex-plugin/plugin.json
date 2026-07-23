@@ -1,7 +1,7 @@
 {
   "name": "gpt-5-6-model-router",
-  "version": "0.3.0+codex.20260721090607",
-  "description": "Autonomy-first GPT-5.6 routing with advisory defaults and bounded delegation.",
+  "version": "0.4.0+codex.20260723152638",
+  "description": "Governed GPT-5.6 routing with accountable overrides and verified critical review.",
   "author": {
     "name": "Pax Dynamics",
     "email": "hello@paxdynamics.com",
@@ -17,10 +17,11 @@
     "gpt-5.6"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "GPT-5.6 Model Router",
     "shortDescription": "Route work to GPT-5.6 agents",
-    "longDescription": "Let the root autonomously choose whether and how to delegate, with cost-aware Luna, Terra, and Sol defaults, optional compact handoffs, bounded one-level descendants, and advisory critical review.",
+    "longDescription": "Route explicit GPT-5.6 work with cost-aware Luna, Terra, and Sol defaults, accountable overrides, bounded delegation, pre-spawn protocol checks, and verified independent review for critical changes.",
     "developerName": "Pax Dynamics",
     "category": "Productivity",
     "websiteURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
@@ -30,15 +31,15 @@
     "composerIcon": "./assets/logo.png",
     "capabilities": [
       "Cost-aware GPT-5.6 routing",
-      "Autonomous delegation judgment",
-      "Compact bounded-fork handoffs",
+      "Accountable delegation judgment",
+      "Pre-spawn protocol enforcement",
       "Bounded one-level descendants",
-      "Advisory critical review"
+      "Verified critical review"
     ],
     "defaultPrompt": [
-      "$setup-gpt56-model-router Install or upgrade the schema-4 model router and depth capability.",
-      "$route-gpt56-task Handle this task with autonomous cost-aware GPT-5.6 routing.",
-      "$route-gpt56-task Handle this critical change with advisory independent review and root override authority."
+      "$setup-gpt56-model-router Install or upgrade the governed router and trust its hooks.",
+      "$route-gpt56-task Handle this task with governed cost-aware GPT-5.6 routing.",
+      "$route-gpt56-task Handle this critical change with verified independent review."
     ]
   }
 }

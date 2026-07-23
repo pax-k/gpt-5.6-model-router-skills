@@ -1,18 +1,41 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://paxdynamics.com/schemas/gpt56-router/task-profile-v3.json",
-  "title": "GPT-5.6 Router Input v3",
+  "$id": "https://paxdynamics.com/schemas/gpt56-router/task-profile-v4.json",
+  "title": "GPT-5.6 Router Task Profile v4",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "ambiguity", "context_breadth", "verification_strength", "risk_domains"],
+  "required": ["schema_version", "kind", "ambiguity", "context_breadth", "verification_strength", "risk_domains", "quality_mode"],
   "properties": {
-    "schema_version": {"const": 3},
+    "schema_version": {"const": 4},
     "kind": {"enum": ["mechanical", "exploration", "implementation", "ambiguous", "debugging", "review", "advisory"]},
     "ambiguity": {"type": "integer", "minimum": 0, "maximum": 3},
     "context_breadth": {"type": "integer", "minimum": 0, "maximum": 3},
     "verification_strength": {"type": "integer", "minimum": 0, "maximum": 3},
     "risk_domains": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "quality_first": {"type": "boolean", "default": false},
+    "quality_mode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "authority", "reference"],
+          "properties": {
+            "level": {"const": "standard"},
+            "authority": {"const": "root"},
+            "reference": {"const": ""}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "authority", "reference"],
+          "properties": {
+            "level": {"const": "quality_first"},
+            "authority": {"enum": ["user", "task_contract", "recorded_failure"]},
+            "reference": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
     "prior_route_failure": {
       "type": "object",
       "additionalProperties": false,
