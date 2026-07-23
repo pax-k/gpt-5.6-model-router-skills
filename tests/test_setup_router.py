@@ -13,7 +13,23 @@ import setup_router  # noqa: E402
 class SetupRouterTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.home = Path(self.temp.name)
-        self.env = {**os.environ, "HOME": str(self.home)}
+        self.synthetic_bin = self.home / "bin"; self.synthetic_bin.mkdir()
+        synthetic_codex = self.synthetic_bin / "codex"
+        synthetic_codex.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "if sys.argv[1:] == ['features', 'list']:\n"
+            "    print('hooks stable true')\n"
+            "    print('multi_agent stable true')\n"
+            "    raise SystemExit(0)\n"
+            "raise SystemExit(2)\n"
+        )
+        synthetic_codex.chmod(0o755)
+        self.env = {
+            **os.environ,
+            "HOME": str(self.home),
+            "PATH": f"{self.synthetic_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        }
         self.codex = self.home / ".codex"; self.config = self.codex / "config.toml"
 
     def tearDown(self): self.temp.cleanup()
