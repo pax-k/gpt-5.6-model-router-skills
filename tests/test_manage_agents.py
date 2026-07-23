@@ -39,6 +39,17 @@ Do not delegate or spawn subagents. Run the requested checks.
 Return a concise result covering outcome, changed files, validation, and blockers.
 """
 '''
+SCHEMA4_LUNA = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=4
+name = "gpt56_router_luna_worker"
+description = "Clear, repeatable, low-risk work with objective acceptance criteria."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+developer_instructions = """
+Complete the narrow assignment, preserve scope, and avoid architectural decisions.
+Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Run the requested checks.
+Return a concise result covering outcome, changed files, validation, and blockers.
+"""
+'''
 
 
 class ManageAgentsTests(unittest.TestCase):
@@ -74,7 +85,7 @@ class ManageAgentsTests(unittest.TestCase):
         self.assertEqual(installed.returncode, 0, result)
         self.assertEqual(len(result["backed_up"]), 1)
         self.assertEqual(Path(result["backed_up"][0]).read_text(), LEGACY_LUNA)
-        self.assertIn("schema=4", target.read_text())
+        self.assertIn("schema=5", target.read_text())
 
     def test_byte_identical_schema3_auto_upgrades_with_backup(self):
         self.destination.mkdir(parents=True)
@@ -83,7 +94,16 @@ class ManageAgentsTests(unittest.TestCase):
         installed, result = self.run_manager("install")
         self.assertEqual(installed.returncode, 0, result)
         self.assertEqual(Path(result["backed_up"][0]).read_text(), SCHEMA3_LUNA)
-        self.assertIn("schema=4", target.read_text())
+        self.assertIn("schema=5", target.read_text())
+
+    def test_byte_identical_schema4_auto_upgrades_with_backup(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text(SCHEMA4_LUNA)
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), SCHEMA4_LUNA)
+        self.assertIn("schema=5", target.read_text())
 
     def test_modified_schema2_refuses_without_force(self):
         self.destination.mkdir(parents=True)
@@ -101,7 +121,7 @@ class ManageAgentsTests(unittest.TestCase):
         completed, result = self.run_manager("install", "--force")
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(Path(result["backed_up"][0]).read_text(), "user-owned\n")
-        self.assertIn("schema=4", target.read_text())
+        self.assertIn("schema=5", target.read_text())
 
     def test_unrelated_agent_file_is_preserved(self):
         self.destination.mkdir(parents=True)

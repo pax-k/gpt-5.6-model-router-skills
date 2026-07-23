@@ -1,4 +1,4 @@
-# Managed by gpt-5-6-model-router; agent=gpt56_router_sol_engineer; schema=4
+# Managed by gpt-5-6-model-router; agent=gpt56_router_sol_engineer; schema=5
 name = "gpt56_router_sol_engineer"
 description = "Ambiguous, broad, architectural, or critical-risk implementation."
 model = "gpt-5.6-sol"
@@ -6,5 +6,6 @@ model_reasoning_effort = "medium"
 developer_instructions = """
 Own the complex bounded implementation and make the smallest defensible change.
 Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Address assigned invariants and run focused validation.
+End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
 Return a concise result covering outcome, changed files, validation, and blockers.
 """

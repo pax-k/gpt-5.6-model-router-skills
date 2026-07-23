@@ -1,14 +1,21 @@
 # Submission status
 
-Updated: July 21, 2026
+Updated: July 23, 2026
 
-Version `v0.3.0` is the public autonomy-first GitHub release, built from plugin version `0.3.0+codex.20260721090607`. The public `v0.2.2` tag remains the historical orchestration release. The external plugin-portal submission remains separately gated and has not been submitted.
+Version `v0.4.0` is an implementation candidate on `codex/release-v0.4.0`. It has not been tagged, released, submitted to the plugin portal, or published in the directory.
 
-Local candidate verification:
+Local candidate `0.4.0+codex.20260723152638` is installed from the personal
+marketplace. Its cached package is byte-identical to the source candidate,
+schema-v5 role migration and effective depth-two checks pass, and Codex CLI
+0.144.4 reports stable enabled hooks and multi-agent features. Manual hook
+trust and fresh-task live acceptance remain open.
 
-- 59 repository tests pass.
-- Repository, publication, both official skill, and official plugin validators pass.
-- Deterministic archive: `dist/gpt-5-6-model-router-0.3.0.zip`.
-- SHA-256: `8dbbd4c08eda76e7b398787bbb0efb1e3d2492be188ab43778b97bfe1fe8d61c`.
+Open gates:
 
-Live plugin discovery passed for both explicit skills at the exact release version. Schema-4 acceptance produced a Terra/medium depth-1 parent, Luna/low depth-2 leaf, and separate Luna/low no-grant leaf with persisted parent chains and `fork_turns: "none"`. Sandbox was observed only, not asserted.
+- Python 3.9 and current-stable CI.
+- Clean-worktree reproducibility from the reviewed annotated tag.
+- Fresh installed-candidate acceptance after manual `/hooks` trust.
+- Reviewed release PR, merge, annotated tag, and GitHub Release.
+- Identical hook-bearing portal draft.
+- Explicit final policy/legal attestation confirmation before **Submit for Review**.
+- Separate confirmation before public directory publication after OpenAI approval.

@@ -1,11 +1,12 @@
 ---
 name: setup-gpt56-model-router
-description: Install, verify, upgrade, or uninstall the ten schema-4 GPT-5.6 roles and the managed depth-2 capability through one transactional setup command.
+description: Install, verify, upgrade, or uninstall the ten schema-v5 GPT-5.6 roles and managed depth-two capability, and verify stable hook and multi-agent runtime support.
 ---
 
 # Set up the GPT-5.6 model router
 
-Use the unified workflow for all setup operations:
+Python 3.9 or newer and a Codex runtime reporting stable enabled `hooks` and
+`multi_agent` features are required.
 
 ```bash
 python3 <skill-directory>/scripts/setup_router.py install --json
@@ -13,10 +14,29 @@ python3 <skill-directory>/scripts/setup_router.py check --json
 python3 <skill-directory>/scripts/setup_router.py uninstall --json
 ```
 
-`install` preflights templates and depth before mutation, installs ten schema-4 roles, and ensures `agents.max_depth >= 2`. Existing values above 2 are preserved. A depth entry changed after router ownership is never overwritten. If post-install verification fails, template and depth mutations roll back together.
+`install` preflights templates, runtime features, and depth before mutation. It
+installs ten schema-v5 roles and ensures effective depth is at least two while
+preserving higher values. A managed depth entry edited after installation is
+never overwritten. Failed post-install verification rolls template and depth
+changes back together.
 
-Byte-identical schema-2 and schema-3 templates upgrade automatically after backup. Modified templates are refused unless `install --force`; force applies only to templates and never bypasses depth ownership. Backups live outside custom-agent discovery.
+Byte-identical schema-2, schema-3, and schema-4 templates upgrade automatically
+after backup. Modified templates are refused unless `install --force`; force
+never bypasses depth ownership. Backups remain outside custom-agent discovery.
 
-A trusted legacy router-owned depth-2 configuration is adopted without losing its original restoration value. `uninstall` restores only the prior managed depth entry when ownership remains intact, preserves unrelated later config edits, and removes only router templates unless explicitly forced.
+The plugin bundles lifecycle hooks. Installation and enablement do not trust
+them automatically. After install or upgrade:
 
-After install or upgrade, start a fresh Codex task so role discovery reloads. Run `inspect_plugin_discovery.py` to verify the exact installed version and both explicit skills, then use the canaries in `references/runtime-evidence.md`. Treat sandbox mode as observational unless an explicit sandbox assertion passes.
+1. Start a fresh Codex task so plugin and role discovery reload.
+2. Open `/hooks`.
+3. Review the plugin-bundled hook definition and trust its current hash.
+4. Run `setup_router.py check --json`.
+5. Run the acceptance scenarios in the route skill's
+   `references/runtime-evidence.md`.
+
+If hooks are disabled, untrusted, managed-only, or unsupported, the governed
+router is not active. Do not describe skills-only behavior as equivalent.
+
+Subagents inherit the active sandbox and approval state. A role requesting
+`read-only` is behavioral evidence unless persisted runtime metadata proves the
+expected sandbox.

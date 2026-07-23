@@ -1,20 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://paxdynamics.com/schemas/gpt56-router/route-recommendation-v3.json",
-  "title": "GPT-5.6 Route Recommendation v3",
+  "$id": "https://paxdynamics.com/schemas/gpt56-router/route-recommendation-v4.json",
+  "title": "GPT-5.6 Route Recommendation v4",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "preferred_route", "availability", "review", "reason_codes"],
+  "required": ["schema_version", "profile_sha256", "preferred_route", "availability", "constraints", "review", "reason_codes"],
   "properties": {
-    "schema_version": {"const": 3},
+    "schema_version": {"const": 4},
+    "profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "preferred_route": {"$ref": "#/$defs/route"},
     "availability": {"enum": ["custom_agent", "model_override", "unavailable", "unknown"]},
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "minimum_model", "minimum_effort"],
+      "properties": {
+        "critical": {"type": "boolean"},
+        "minimum_model": {"type": ["string", "null"]},
+        "minimum_effort": {"enum": ["medium", null]}
+      }
+    },
     "review": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["recommended", "preferred_reviewer"],
+      "required": ["required", "preferred_reviewer"],
       "properties": {
-        "recommended": {"type": "boolean"},
+        "required": {"type": "boolean"},
         "preferred_reviewer": {"anyOf": [{"$ref": "#/$defs/route"}, {"type": "null"}]}
       }
     },

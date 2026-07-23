@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -22,7 +24,48 @@ class SetupResult:
     depth: dict
     changed: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    runtime: dict = field(default_factory=dict)
     rolled_back: bool = False
+
+
+def inspect_runtime(executable: str | None = None) -> dict:
+    command = executable or shutil.which("codex")
+    if not command:
+        return {
+            "ok": False,
+            "errors": ["Codex CLI is unavailable; cannot verify stable hooks and multi-agent support"],
+            "warnings": [],
+            "features": {},
+        }
+    completed = subprocess.run(
+        [command, "features", "list"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return {
+            "ok": False,
+            "errors": ["could not inspect Codex feature state"],
+            "warnings": [completed.stderr.strip()] if completed.stderr.strip() else [],
+            "features": {},
+        }
+    features: dict[str, dict[str, object]] = {}
+    for line in completed.stdout.splitlines():
+        fields = line.split()
+        if len(fields) >= 3 and fields[0] in ("hooks", "multi_agent"):
+            features[fields[0]] = {
+                "maturity": fields[1],
+                "enabled": fields[2].lower() == "true",
+            }
+    errors = []
+    for name in ("hooks", "multi_agent"):
+        feature = features.get(name)
+        if not feature:
+            errors.append(f"Codex does not report the required {name} feature")
+        elif feature["maturity"] != "stable" or not feature["enabled"]:
+            errors.append(f"Codex {name} must be stable and enabled")
+    return {"ok": not errors, "errors": errors, "warnings": [], "features": features}
 
 
 def _agent_preflight(command: str, templates: dict[str, bytes], destination: Path, force: bool) -> manage_agents.Result:
@@ -33,7 +76,9 @@ def _agent_preflight(command: str, templates: dict[str, bytes], destination: Pat
         for filename in divergent:
             path = destination / filename
             if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() in {
-                manage_agents.LEGACY_SCHEMA2_SHA256[filename], manage_agents.LEGACY_SCHEMA3_SHA256[filename]
+                manage_agents.LEGACY_SCHEMA2_SHA256[filename],
+                manage_agents.LEGACY_SCHEMA3_SHA256[filename],
+                manage_agents.LEGACY_SCHEMA4_SHA256[filename],
             }: legacy.append(filename)
         refused = [name for name in divergent if name not in legacy]
         errors = [] if force or not refused else ["refusing modified templates without --force"]
@@ -107,7 +152,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv or sys.argv[1:])
     if args.force and args.command == "check": parser.error("--force is valid only with install or uninstall")
+    if sys.version_info < (3, 9):
+        parser.error("Python 3.9 or newer is required")
+    runtime = inspect_runtime() if args.command in ("install", "check") else {
+        "ok": True,
+        "errors": [],
+        "warnings": [],
+        "features": {},
+    }
+    if not runtime["ok"]:
+        payload = {
+            "ok": False,
+            "command": args.command,
+            "runtime": runtime,
+            "errors": runtime["errors"],
+        }
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print(f"{args.command}: failed")
+            print("errors: " + ", ".join(runtime["errors"]))
+        return 1
     result = run(args.command, args.force)
+    result.runtime = runtime
     payload = asdict(result)
     if args.json: print(json.dumps(payload, indent=2, sort_keys=True))
     else:
