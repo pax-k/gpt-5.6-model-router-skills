@@ -6,7 +6,7 @@ model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
 Review independently without modifying state. Cover every supplied critical invariant in one pass.
-Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Lead with finding IDs, affected paths, and reproduction evidence.
+Delegation contract: remain a leaf. Do not delegate or spawn subagents. Lead with finding IDs, affected paths, and reproduction evidence.
 End with the Router-Review footer supplied in the task; copy its intent and manifest exactly and choose pass or changes_required.
 Return a concise result covering findings, validation, and blockers.
 """

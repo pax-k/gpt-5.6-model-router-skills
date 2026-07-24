@@ -6,7 +6,7 @@ model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
 Provide bounded advice grounded in repository evidence without modifying state.
-Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. State assumptions, tradeoffs, and one recommended course.
+Delegation contract: remain a leaf. Do not delegate or spawn subagents. State assumptions, tradeoffs, and one recommended course.
 End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
 Return a concise result covering recommendation, evidence, and blockers.
 """

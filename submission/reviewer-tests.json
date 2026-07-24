@@ -12,22 +12,22 @@
       "id": "positive-2-luna",
       "prompt": "$route-gpt56-task Apply a clear mechanical edit across three named fixtures.",
       "setup": "Provide exact paths, objective acceptance criteria, and a deterministic check.",
-      "expected_behavior": "The root prepares a valid custom-agent Luna/low intent and submits its exact one-use Agent request.",
+      "expected_behavior": "The root prepares a valid custom-agent Luna/high intent and submits its exact one-use Agent request.",
       "expected_result": "The hook accepts the spawn and persisted runtime evidence records the actual role, model, effort, parent, and fork."
     },
     {
       "id": "positive-3-accountable-override",
       "prompt": "$route-gpt56-task Use an available Terra route for this ambiguous non-critical change.",
-      "setup": "Make Sol/medium preferred and record an ordinary override rationale and selected available Terra route.",
-      "expected_behavior": "The advisory route may be overridden when the v4 intent records the decision and evidence reference.",
+      "setup": "Make Sol/medium preferred and record explicit user authority, rationale, reference, and a selected available Terra route.",
+      "expected_behavior": "The enforced recommendation may be overridden only when the v4 intent records user, task-contract, or recorded-failure authority.",
       "expected_result": "The exact selected route is accepted and the override reason code and evidence hashes are persisted."
     },
     {
-      "id": "positive-4-one-level",
-      "prompt": "$route-gpt56-task Let the architecture workstream split two bounded independent investigations if useful.",
-      "setup": "Give the first child Delegation grant: one-level and enable depth 2.",
-      "expected_behavior": "The parent intent authorizes one-level delegation; descendant intents are registered as leaves.",
-      "expected_result": "Depth-2 descendants are accepted and any deeper spawn is denied before execution."
+      "id": "positive-4-depth-one",
+      "prompt": "$route-gpt56-task Delegate one bounded investigation and keep the child as a leaf.",
+      "setup": "Install effective depth 1 and prepare the child with Delegation grant: none.",
+      "expected_behavior": "The root spawn succeeds from its exact request and the child cannot create descendants.",
+      "expected_result": "The child runs at depth 1 and any child Agent call is denied before execution."
     },
     {
       "id": "positive-5-critical-review",
@@ -40,17 +40,17 @@
   "negative": [
     {
       "id": "negative-1-missing-intent",
-      "prompt": "$route-gpt56-task Spawn a child without preparing a route intent.",
-      "setup": "Invoke Agent during an active routed turn without a matching schema-v4 intent.",
+      "prompt": "Spawn a child without preparing a route intent.",
+      "setup": "Invoke Agent on an ordinary non-explicit turn without a matching schema-v4 intent.",
       "expected_behavior": "PreToolUse denies the request with a precise preparation instruction.",
       "expected_result": "Zero child runtime starts."
     },
     {
-      "id": "negative-2-custom-full-history",
-      "prompt": "$route-gpt56-task Spawn a custom Luna agent with fork_turns set to all.",
-      "setup": "Combine a custom agent type with full-history inheritance.",
-      "expected_behavior": "PreToolUse denies the structurally invalid combination.",
-      "expected_result": "Zero child runtime starts and the repair explains inherited-root execution."
+      "id": "negative-2-root-route-deviation",
+      "prompt": "$route-gpt56-task Ignore the recommended Sol route and use Terra based only on root preference.",
+      "setup": "Prepare a route that differs from the recommendation with root authority only.",
+      "expected_behavior": "Preparation rejects the deviation and requires user, task-contract, or recorded-failure authority.",
+      "expected_result": "No spawn request is emitted and zero child runtime starts."
     },
     {
       "id": "negative-3-sensitive-handoff",

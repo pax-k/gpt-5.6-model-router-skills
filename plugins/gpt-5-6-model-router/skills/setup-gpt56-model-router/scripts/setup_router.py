@@ -72,17 +72,23 @@ def _agent_preflight(command: str, templates: dict[str, bytes], destination: Pat
     if command == "check": return manage_agents.check_agents(templates, destination)
     missing, unchanged, divergent = manage_agents.inspect(templates, destination)
     if command == "install":
+        _, retired_divergent = manage_agents.inspect_retired(destination)
         legacy = []
         for filename in divergent:
             path = destination / filename
-            if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() in {
+            known_hashes = {
                 manage_agents.LEGACY_SCHEMA2_SHA256[filename],
                 manage_agents.LEGACY_SCHEMA3_SHA256[filename],
                 manage_agents.LEGACY_SCHEMA4_SHA256[filename],
-            }: legacy.append(filename)
+            }
+            if filename in manage_agents.LEGACY_SCHEMA5_SHA256:
+                known_hashes.update(manage_agents.LEGACY_SCHEMA5_SHA256[filename])
+            if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() in known_hashes:
+                legacy.append(filename)
         refused = [name for name in divergent if name not in legacy]
-        errors = [] if force or not refused else ["refusing modified templates without --force"]
-        return manage_agents.Result(ok=not errors, command=command, target_dir=str(destination), missing=missing, unchanged=unchanged, divergent=refused, errors=errors)
+        blocked = [*refused, *retired_divergent]
+        errors = [] if force or not blocked else ["refusing modified current or retired templates without --force"]
+        return manage_agents.Result(ok=not errors, command=command, target_dir=str(destination), missing=missing, unchanged=unchanged, divergent=blocked, errors=errors)
     removable, refused = [], []
     for filename, expected in templates.items():
         path = destination / filename
@@ -126,6 +132,7 @@ def run(command: str, force: bool = False, *, codex: Path | None = None) -> Setu
         return SetupResult(True, command, asdict(agent_ready), manage_depth.to_dict(depth_ready))
 
     paths = [destination / name for name in templates]
+    paths += [destination / name for name in manage_agents.RETIRED_AGENTS]
     paths += [codex / "config.toml", codex / manage_depth.STATE_NAME, codex / manage_depth.LEGACY_STATE_NAME]
     snapshot = _snapshot(paths)
     if command == "install":
@@ -133,7 +140,7 @@ def run(command: str, force: bool = False, *, codex: Path | None = None) -> Setu
         agent_result = manage_agents.install_agents(templates, destination, force) if depth_result.ok else agent_ready
         post_agents = manage_agents.check_agents(templates, destination) if agent_result.ok else agent_result
         post_depth = manage_depth.preflight("check", codex) if agent_result.ok else depth_result
-        ok = agent_result.ok and depth_result.ok and post_agents.ok and post_depth.ok and (post_depth.effective_depth or 0) >= 2
+        ok = agent_result.ok and depth_result.ok and post_agents.ok and post_depth.ok and post_depth.effective_depth == 1
     else:
         agent_result = manage_agents.uninstall_agents(templates, destination, force)
         depth_result = manage_depth.uninstall(codex) if agent_result.ok else depth_ready

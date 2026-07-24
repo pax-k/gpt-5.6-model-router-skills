@@ -2,10 +2,10 @@
 name = "gpt56_router_luna_worker"
 description = "Clear, repeatable, low-risk work with objective acceptance criteria."
 model = "gpt-5.6-luna"
-model_reasoning_effort = "low"
+model_reasoning_effort = "high"
 developer_instructions = """
 Complete the narrow assignment, preserve scope, and avoid architectural decisions.
-Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Run the requested checks.
+Delegation contract: remain a leaf. Do not delegate or spawn subagents. Run the requested checks.
 End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
 Return a concise result covering outcome, changed files, validation, and blockers.
 """

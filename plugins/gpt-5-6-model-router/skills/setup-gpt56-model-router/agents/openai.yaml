@@ -1,6 +1,6 @@
 interface:
   display_name: "Set Up GPT-5.6 Model Router"
   short_description: "Install governed GPT-5.6 routing"
-  default_prompt: "Use $setup-gpt56-model-router to install or upgrade ten schema-v5 roles, verify hooks and multi-agent support, and explain the required hook trust step."
+  default_prompt: "Use $setup-gpt56-model-router to install or upgrade eight schema-v5 roles, verify hooks and multi-agent support, and explain the required hook trust step."
 policy:
   allow_implicit_invocation: false

@@ -62,13 +62,13 @@ class ProtocolSchemaTests(unittest.TestCase):
             self.assertEqual(value["$schema"], "https://json-schema.org/draft/2020-12/schema")
             self.assertIn("v4", value["$id"])
 
-    def test_inventory_has_ten_schema5_bounded_roles(self):
+    def test_inventory_has_eight_schema5_bounded_roles(self):
         roles = contract.load_role_inventory()
-        self.assertEqual(len(roles), 10)
+        self.assertEqual(len(roles), 8)
         for role in roles.values():
-            self.assertIn("Delegation grant: one-level", role.instructions)
-            self.assertIn("Delegation grant: none", role.instructions)
-            self.assertIn("cannot delegate further", role.instructions)
+            self.assertIn("remain a leaf", role.instructions)
+            self.assertIn("Do not delegate or spawn subagents", role.instructions)
+            self.assertNotIn("one-level", role.instructions)
             self.assertTrue("Router-Result" in role.instructions or "Router-Review" in role.instructions)
 
     def test_profile_v4_and_clean_v3_break(self):
@@ -107,6 +107,8 @@ class ProtocolSchemaTests(unittest.TestCase):
         self.assertEqual(contract.validate_route_intent(inherited)["fork_turns"], "all")
         with self.assertRaisesRegex(contract.ContractError, "requires inherited"):
             contract.validate_route_intent(intent(fork_turns="all"))
+        with self.assertRaisesRegex(contract.ContractError, "leaves at depth one"):
+            contract.validate_route_intent(intent(delegation_grant="one-level"))
 
     def test_ultra_is_rejected(self):
         invalid = profile(

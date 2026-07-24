@@ -1,5 +1,5 @@
 {
-  "description": "Govern explicit GPT-5.6 router turns without affecting unrelated Codex delegation.",
+  "description": "Require every root Agent spawn to use a prepared GPT-5.6 route intent while leaving root-direct work unrestricted.",
   "hooks": {
     "UserPromptSubmit": [
       {

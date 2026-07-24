@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "gpt-5-6-model-router"
 ROUTE = PLUGIN / "skills" / "route-gpt56-task"
 SETUP = PLUGIN / "skills" / "setup-gpt56-model-router"
-VERSION = re.compile(r"^0\.4\.0\+codex\.[A-Za-z0-9.-]+$")
+VERSION = re.compile(r"^0\.4\.1\+codex\.[A-Za-z0-9.-]+$")
 MARKER = re.compile(r"^# Managed by gpt-5-6-model-router; agent=([a-z0-9_]+); schema=5$")
 
 try:
@@ -24,13 +24,11 @@ except ModuleNotFoundError:  # Python 3.9 and 3.10
 
 
 EXPECTED_ROUTES = {
-    ("gpt-5.6-luna", "low"),
+    ("gpt-5.6-luna", "high"),
     ("gpt-5.6-terra", "medium"),
     ("gpt-5.6-terra", "high"),
     ("gpt-5.6-sol", "medium"),
     ("gpt-5.6-sol", "high"),
-    ("gpt-5.6-sol", "xhigh"),
-    ("gpt-5.6-sol", "max"),
 }
 HOOK_EVENTS = {
     "UserPromptSubmit",
@@ -51,7 +49,7 @@ def validate() -> list[str]:
     errors: list[str] = []
     manifest = json.loads((PLUGIN / ".codex-plugin/plugin.json").read_text())
     marketplace = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
-    require(bool(VERSION.fullmatch(str(manifest.get("version", "")))), "manifest must use v0.4.0 with one cachebuster", errors)
+    require(bool(VERSION.fullmatch(str(manifest.get("version", "")))), "manifest must use v0.4.1 with one cachebuster", errors)
     require(marketplace["plugins"][0]["name"] == manifest["name"], "marketplace and manifest names differ", errors)
     require(manifest.get("skills") == "./skills/", "manifest must expose skills", errors)
     require(manifest.get("hooks") == "./hooks/hooks.json", "manifest must expose bundled hooks", errors)
@@ -101,7 +99,8 @@ def validate() -> list[str]:
 
     route_skill = (ROUTE / "SKILL.md").read_text()
     for text in (
-        "register every root or delegated workstream",
+        "every root `Agent` spawn on every turn",
+        "Root rationale alone cannot change",
         "spawn_request",
         "critical execution uses at least Sol/medium",
         "manifest SHA-256",
@@ -111,6 +110,7 @@ def validate() -> list[str]:
     guard = (scripts / "route_guard.py").read_text()
     for text in (
         "MISSING_ROUTE_INTENT",
+        "ROUTER_STATE_UNAVAILABLE",
         "CUSTOM_FULL_HISTORY",
         "UNAUTHORIZED_DESCENDANT",
         "CHILD_COMMIT_DENIED",
@@ -130,7 +130,7 @@ def validate() -> list[str]:
     require((PLUGIN / "vendor/tomli/LICENSE").is_file(), "vendored TOML license is missing", errors)
 
     templates = sorted((SETUP / "assets/agents").glob("*.toml"))
-    require(len(templates) == 10, "exactly ten schema-v5 templates are required", errors)
+    require(len(templates) == 8, "exactly eight schema-v5 templates are required", errors)
     names: set[str] = set()
     routes: set[tuple[str, str]] = set()
     for path in templates:
@@ -142,7 +142,7 @@ def validate() -> list[str]:
         names.add(raw.get("name"))
         routes.add((raw.get("model"), raw.get("model_reasoning_effort")))
         instructions = str(raw.get("developer_instructions", ""))
-        for expected in ("Delegation grant: one-level", "Delegation grant: none"):
+        for expected in ("remain a leaf", "Do not delegate or spawn subagents"):
             require(expected in instructions, f"role delegation contract missing {expected}: {path.name}", errors)
         require(
             "Router-Result" in instructions or "Router-Review" in instructions,
@@ -150,6 +150,11 @@ def validate() -> list[str]:
             errors,
         )
     require(routes == EXPECTED_ROUTES, "role catalog contains an unapproved model/effort combination", errors)
+    require(
+        not any("specialist-xhigh" in path.name or "specialist-max" in path.name for path in templates),
+        "retired Sol/xhigh or Sol/max templates remain bundled",
+        errors,
+    )
 
     for name in (
         "routing-policy.md",
@@ -159,6 +164,7 @@ def validate() -> list[str]:
     ):
         require((ROUTE / "references" / name).is_file(), f"missing v0.4 reference: {name}", errors)
     require((ROOT / "docs/release-v0.4.0-plan.md").is_file(), "release plan is missing", errors)
+    require((ROOT / "docs/catalog-v0.4.1.md").is_file(), "v0.4.1 catalog decision is missing", errors)
     return errors
 
 

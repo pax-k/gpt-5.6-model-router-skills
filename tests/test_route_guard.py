@@ -159,16 +159,31 @@ class RouteGuardTests(unittest.TestCase):
             }
         )
 
-    def test_activation_is_exact_and_non_router_turns_are_untouched(self):
-        self.assertEqual(self.activate("ordinary delegation request"), {})
-        self.assertFalse(self.state_dir.exists())
-        self.assertEqual(self.activate("$route-gpt56-task-extra is not the skill"), {})
-        self.assertFalse(self.state_dir.exists())
+    def test_every_turn_gets_spawn_enforcement_but_only_exact_invocation_is_explicit(self):
+        ordinary = self.activate("ordinary delegation request")
+        self.assertIn("Before every Agent spawn", ordinary["hookSpecificOutput"]["additionalContext"])
+        ordinary_state = route_guard._load_state(
+            route_guard._state_path(self.state_dir, self.session_id, self.turn_id)
+        )
+        self.assertFalse(ordinary_state["explicit_invocation"])
+
+        self.turn_id = "turn-2"
+        near_match = self.activate("$route-gpt56-task-extra is not the skill")
+        self.assertIn("Before every Agent spawn", near_match["hookSpecificOutput"]["additionalContext"])
+        near_state = route_guard._load_state(
+            route_guard._state_path(self.state_dir, self.session_id, self.turn_id)
+        )
+        self.assertFalse(near_state["explicit_invocation"])
+
+        self.turn_id = "turn-3"
         output = self.activate()
         self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit")
-        self.assertTrue(self.state_dir.exists())
+        explicit_state = route_guard._load_state(
+            route_guard._state_path(self.state_dir, self.session_id, self.turn_id)
+        )
+        self.assertTrue(explicit_state["explicit_invocation"])
 
-    def test_missing_plugin_data_does_not_capture_unrelated_tool_use(self):
+    def test_missing_plugin_data_fails_closed_for_agent_spawns(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             output = route_guard.hook_pre_tool(
                 {
@@ -178,12 +193,30 @@ class RouteGuardTests(unittest.TestCase):
                     "tool_input": {"task_name": "ordinary", "message": "ordinary"},
                 }
             )
-        self.assertEqual(output, {})
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("state is unavailable", output["hookSpecificOutput"]["permissionDecisionReason"])
 
-    def test_sanitized_hook_event_fixtures_cover_activation_boundary(self):
+    def test_missing_prompt_hook_state_fails_closed_only_for_agent(self):
+        denied = self.pre_agent(
+            {"task_name": "unprepared", "message": "no intent", "fork_turns": "none"}
+        )
+        self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("prompt hook", denied["hookSpecificOutput"]["permissionDecisionReason"])
+        unaffected = route_guard.hook_pre_tool(
+            {
+                "session_id": self.session_id,
+                "turn_id": self.turn_id,
+                "tool_name": "Bash",
+                "tool_input": {"command": "git status --short"},
+            }
+        )
+        self.assertEqual(unaffected, {})
+
+    def test_sanitized_hook_event_fixtures_cover_global_spawn_boundary(self):
         ordinary = dict(FIXTURES["ordinary_prompt"])
         ordinary.update(cwd=str(self.cwd), transcript_path=self.root_transcript)
-        self.assertEqual(route_guard.hook_user_prompt(ordinary), {})
+        ordinary_output = route_guard.hook_user_prompt(ordinary)
+        self.assertIn("Before every Agent spawn", ordinary_output["hookSpecificOutput"]["additionalContext"])
         routed = dict(FIXTURES["router_prompt"])
         routed.update(cwd=str(self.cwd), transcript_path=self.root_transcript)
         route_guard.hook_user_prompt(routed)
@@ -193,7 +226,7 @@ class RouteGuardTests(unittest.TestCase):
         self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_valid_custom_agent_spawn_is_allowed_exactly_once(self):
-        self.activate()
+        self.activate("ordinary request that may need delegation")
         prepared = self.prepare()
         self.assertTrue(prepared["ok"])
         request = prepared["data"]["spawn_request"]
@@ -203,6 +236,17 @@ class RouteGuardTests(unittest.TestCase):
             denied["hookSpecificOutput"]["permissionDecision"],
             "deny",
         )
+
+    def test_ordinary_root_only_turn_closes_without_route_intent(self):
+        self.activate("Answer this directly without delegation.")
+        closed = route_guard.hook_stop(
+            {
+                "session_id": self.session_id,
+                "turn_id": self.turn_id,
+                "cwd": str(self.cwd),
+            }
+        )
+        self.assertTrue(closed["continue"])
 
     def test_missing_modified_and_sensitive_handoffs_are_denied(self):
         self.activate()
@@ -277,40 +321,16 @@ class RouteGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(route_guard.ContractError, "requires inherited execution"):
             self.prepare(custom)
 
-    def test_max_requires_privileged_authority(self):
-        inventory = route_guard.load_role_inventory()
-        role = inventory["gpt56_router_sol_specialist_max"]
+    def test_retired_specialist_route_is_rejected(self):
         selected = {
-            "agent": role.name,
-            "model": role.model,
-            "reasoning_effort": role.reasoning_effort,
-            "read_only": role.read_only,
+            "agent": "gpt56_router_sol_specialist_max",
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "max",
+            "read_only": False,
         }
         self.activate()
-        rejected = self.prepare(
-            self.intent(
-                task_name="max-root-override",
-                selected_route=selected,
-                override={
-                    "reason_code": "QUALITY_OVERRIDE",
-                    "rationale": "Root rationale alone is insufficient.",
-                    "authority": {"authority": "root", "reference": "root judgment"},
-                },
-            )
-        )
-        self.assertFalse(rejected["ok"])
-        accepted = self.prepare(
-            self.intent(
-                task_name="max-after-failure",
-                selected_route=selected,
-                override={
-                    "reason_code": "RECORDED_FAILURE_ESCALATION",
-                    "rationale": "A lower Sol route failed its verification.",
-                    "authority": {"authority": "recorded_failure", "reference": "audit/failure-1"},
-                },
-            )
-        )
-        self.assertTrue(accepted["ok"])
+        with self.assertRaisesRegex(route_guard.ContractError, "not a bundled role"):
+            self.prepare(self.intent(task_name="retired-max", selected_route=selected))
 
     def test_positive_fork_requires_recorded_rationale(self):
         self.activate()
@@ -329,6 +349,44 @@ class RouteGuardTests(unittest.TestCase):
         )
         self.assertTrue(accepted["ok"])
 
+    def test_route_deviation_requires_non_root_authority(self):
+        self.activate("ordinary governed delegation")
+        luna = {
+            "agent": "gpt56_router_luna_worker",
+            "model": "gpt-5.6-luna",
+            "reasoning_effort": "high",
+            "read_only": False,
+        }
+        root_override = self.prepare(
+            self.intent(
+                task_name="root-route-deviation",
+                selected_route=luna,
+                override={
+                    "reason_code": "ROOT_PREFERS_LUNA",
+                    "rationale": "The root prefers a cheaper worker.",
+                    "authority": {"authority": "root", "reference": "root routing rationale"},
+                },
+            )
+        )
+        self.assertFalse(root_override["ok"])
+        self.assertIn(
+            "route deviations require user, task_contract, or recorded_failure authority",
+            root_override["errors"],
+        )
+        user_override = self.prepare(
+            self.intent(
+                task_name="authorized-route-deviation",
+                selected_route=luna,
+                owned_paths=["src/b"],
+                override={
+                    "reason_code": "USER_SELECTED_LUNA",
+                    "rationale": "The user selected Luna/high for this bounded task.",
+                    "authority": {"authority": "user", "reference": "current user instruction"},
+                },
+            )
+        )
+        self.assertTrue(user_override["ok"])
+
     def test_recorded_failure_profile_authorizes_escalation(self):
         self.activate()
         escalation_profile = self.profile(
@@ -345,7 +403,11 @@ class RouteGuardTests(unittest.TestCase):
         self.assertTrue(accepted["ok"])
         self.assertEqual(
             accepted["data"]["selected_route"]["reasoning_effort"],
-            "xhigh",
+            "high",
+        )
+        self.assertEqual(
+            accepted["data"]["selected_route"]["agent"],
+            "gpt56_router_sol_debugger",
         )
 
     def test_child_commit_commands_are_denied_without_authority(self):
@@ -580,7 +642,7 @@ class RouteGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(route_guard.ContractError, "escapes the working directory"):
             self.prepare(self.intent(task_name="escape-owner", owned_paths=["../outside"]))
 
-    def test_leaf_cannot_delegate_and_one_level_child_can_create_leaf(self):
+    def test_depth_one_child_cannot_delegate_and_grants_are_rejected(self):
         self.activate()
         parent = self.prepare(self.intent(task_name="parent", delegation_grant="none", owned_paths=["src/a"]))
         request = parent["data"]["spawn_request"]
@@ -598,27 +660,10 @@ class RouteGuardTests(unittest.TestCase):
         )
         self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
 
-        self.turn_id = "turn-2"
-        self.activate()
-        parent = self.prepare(
-            self.intent(task_name="granted-parent", delegation_grant="one-level", owned_paths=["src/a"])
-        )
-        request = parent["data"]["spawn_request"]
-        self.pre_agent(request)
-        self.post_agent(request, "agent-granted")
-        granted_transcript = str(self.root / "granted.jsonl")
-        self.start_agent(parent, "agent-granted", granted_transcript)
-        descendant = self.prepare(
-            self.intent(task_name="leaf-descendant", owned_paths=["src/b"], delegation_grant="none")
-        )
-        self.assertEqual(
-            self.pre_agent(
-                descendant["data"]["spawn_request"],
-                transcript=granted_transcript,
-                tool_use_id="tool-leaf",
-            ),
-            {},
-        )
+        with self.assertRaisesRegex(route_guard.ContractError, "leaves at depth one"):
+            self.prepare(
+                self.intent(task_name="granted-parent", delegation_grant="one-level", owned_paths=["src/c"])
+            )
 
     def test_root_intent_is_required_and_can_close_an_active_turn(self):
         self.activate()
@@ -648,7 +693,7 @@ class RouteGuardTests(unittest.TestCase):
         )
         self.assertTrue(closed["continue"])
 
-    def test_critical_root_requires_privileged_accountable_override(self):
+    def test_critical_root_accepts_any_root_model_without_override(self):
         self.activate()
         critical = self.intent(
             execution_mode="root",
@@ -656,18 +701,9 @@ class RouteGuardTests(unittest.TestCase):
             profile=self.profile(risk_domains=["authentication"]),
             owned_paths=["auth.py"],
         )
-        rejected = self.prepare(critical)
-        self.assertFalse(rejected["ok"])
-        critical["override"] = {
-            "reason_code": "ROOT_DIRECT_CRITICAL",
-            "rationale": "The root owns the integrated critical implementation.",
-            "authority": {
-                "authority": "task_contract",
-                "reference": "release-plan critical floor exception",
-            },
-        }
         accepted = self.prepare(critical)
         self.assertTrue(accepted["ok"])
+        self.assertTrue(accepted["data"]["review_required"])
 
     def test_critical_review_is_manifest_bound_and_stales_on_change(self):
         target = self.cwd / "auth.py"

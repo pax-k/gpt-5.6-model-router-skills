@@ -32,8 +32,6 @@ ROLES = {
     "sol_debugger": "gpt56_router_sol_debugger",
     "sol_reviewer": "gpt56_router_sol_reviewer",
     "sol_advisor": "gpt56_router_sol_advisor",
-    "sol_xhigh": "gpt56_router_sol_specialist_xhigh",
-    "sol_max": "gpt56_router_sol_specialist_max",
 }
 CRITICAL_DOMAINS = frozenset(
     {
@@ -113,18 +111,18 @@ def _select(profile: Mapping[str, Any]) -> tuple[str, list[str], bool]:
         key = "sol_debugger" if verification <= 1 or kind == "debugging" else "sol_engineer"
         if verification <= 1:
             reasons.append("WEAK_CRITICAL_VERIFICATION")
-    if _failed(profile, "luna", "low"):
-        key, reasons = "terra_worker", reasons + ["ESCALATE_LUNA_LOW"]
+    if _failed(profile, "luna", "high"):
+        key, reasons = "terra_worker", reasons + ["ESCALATE_LUNA_HIGH"]
     elif _failed(profile, "terra", "medium"):
         key, reasons = "sol_engineer", reasons + ["ESCALATE_TERRA_MEDIUM"]
+    elif _failed(profile, "terra", "high"):
+        key, reasons = "sol_engineer", reasons + ["ESCALATE_TERRA_HIGH"]
     elif _failed(profile, "sol", "medium"):
         key, reasons = "sol_debugger", reasons + ["ESCALATE_SOL_MEDIUM"]
     elif _failed(profile, "sol", "high"):
-        key, reasons = "sol_xhigh", reasons + ["ESCALATE_SOL_HIGH"]
-    elif _failed(profile, "sol", "xhigh"):
-        key, reasons = "sol_max", reasons + ["ESCALATE_SOL_XHIGH"]
+        key, reasons = "sol_debugger", reasons + ["REPLAN_AT_SOL_HIGH_CEILING"]
     if profile["quality_mode"]["level"] == "quality_first" and kind not in ("review", "advisory"):
-        key, reasons = "sol_max", reasons + ["QUALITY_FIRST"]
+        key, reasons = "sol_debugger", reasons + ["QUALITY_FIRST_SOL_HIGH"]
     return key, reasons, critical
 
 

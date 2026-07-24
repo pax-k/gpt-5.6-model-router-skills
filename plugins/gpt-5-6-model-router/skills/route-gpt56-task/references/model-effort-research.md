@@ -1,7 +1,7 @@
 # GPT-5.6 model and effort decision
 
-Status: accepted for router v0.4.0
-Decision date: 2026-07-23
+Status: accepted for router v0.4.1
+Decision date: 2026-07-24
 
 ## Evidence
 
@@ -40,12 +40,13 @@ Choose the model family from the task's ambiguity, required judgment, and risk:
 
 Choose effort independently from the exploration and verification burden:
 
-- `low`: straightforward work where latency matters.
 - `medium`: normal repository reasoning and tool use.
-- `high`: competing hypotheses, complex logic, edge cases, or independent
-  critical review.
-- `xhigh`: a bounded retry after recorded lower-route failure.
-- `max`: explicitly authorized quality-first work or repeated bounded failure.
+- `high`: strongly verified mechanical work, competing hypotheses, complex
+  logic, edge cases, difficult debugging, or independent critical review.
+
+The v0.4.1 custom-agent catalog does not expose low, xhigh, or max. Recorded
+failure is absorbed by replanning at the next retained route, with Sol/high as
+the ceiling.
 
 Context breadth alone does not select Sol. A large read-only search can remain
 Terra/high; Sol is selected when synthesizing the evidence requires frontier
@@ -53,11 +54,12 @@ judgment or the risk floor requires it.
 
 ## Curated route frontier
 
-| Combination | v0.4.0 treatment | Intended use |
+| Combination | v0.4.1 treatment | Intended use |
 | --- | --- | --- |
 | Luna/none | Do not expose as a custom agent | Deterministic or latency-baseline work belongs at root or in scripts |
-| Luna/low | Keep | Narrow mechanical work with objective acceptance |
-| Luna/medium and above | Do not expose | Escalate model family when material judgment is required |
+| Luna/low and medium | Do not expose | The retained Luna worker uses high verification effort |
+| Luna/high | Keep | Narrow mechanical work with objective acceptance and strong verification |
+| Luna/xhigh and max | Do not expose | Replan with Terra or Sol instead of increasing Luna effort |
 | Terra/none | Do not expose | Routed repository work normally benefits from reasoning and tools |
 | Terra/low | Experimental only | Candidate for fast scouting after evaluation |
 | Terra/medium | Keep | Everyday implementation and read-heavy exploration |
@@ -65,23 +67,25 @@ judgment or the risk floor requires it.
 | Terra/xhigh and max | Do not expose | Escalate to Sol |
 | Sol/none and low | Do not expose | Sol and the critical floor imply a non-trivial reasoning requirement |
 | Sol/medium | Keep | Architecture, ambiguity, cross-layer or critical implementation, advice |
-| Sol/high | Keep | Difficult debugging and independent critical review |
-| Sol/xhigh | Keep with authority | Recorded lower-route failure |
-| Sol/max | Keep with authority | Hardest quality-first or repeatedly failed bounded work |
+| Sol/high | Keep | Difficult work, debugging, quality-first execution, and independent critical review |
+| Sol/xhigh and max | Do not expose | Replan at the Sol/high ceiling |
 
 “Do not expose” means the router does not bundle or recommend a custom role for
 that pair. It does not claim the API combination is invalid.
 
-## v0.4.0 role decision
+## v0.4.1 role decision
 
-Retain the ten roles. Do not add a Terra/low role in this release.
+Retain eight roles and five model/effort combinations.
 
-- Luna/low worker
+- Luna/high worker
 - Terra/medium explorer and worker
 - Terra/high investigator
 - Sol/medium engineer and advisor
 - Sol/high debugger and reviewer
-- Sol/xhigh and Sol/max specialists
+
+The former Sol/xhigh and Sol/max specialist responsibilities are absorbed into
+the Sol/high debugger. A recorded Sol/high failure requires a materially revised
+plan, narrower decomposition, or stronger verifier evidence before retrying.
 
 The Terra/high investigator is valid only for broad evidence surfaces with
 competing hypotheses. Architectural ambiguity, criticality, or weakly verified
@@ -91,13 +95,10 @@ critical risk selects Sol instead.
 
 Use sanitized representative tasks and compare adjacent candidates:
 
-1. Luna/low versus Terra/low.
-2. Terra/low versus Terra/medium.
-3. Terra/medium versus Terra/high.
-4. Terra/high versus Sol/medium.
-5. Sol/medium versus Sol/high.
-6. Sol/high versus Sol/xhigh.
-7. Sol/xhigh versus Sol/max.
+1. Luna/high versus Terra/medium.
+2. Terra/medium versus Terra/high.
+3. Terra/high versus Sol/medium.
+4. Sol/medium versus Sol/high.
 
 Record task acceptance, verifier pass rate, independent-review findings,
 unsupported assumptions, retries, latency, input/output/reasoning tokens, and

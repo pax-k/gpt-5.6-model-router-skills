@@ -3,7 +3,7 @@
   "plugin_type": "skills_only",
   "name": "GPT-5.6 Model Router",
   "short_description": "Route work to GPT-5.6 agents",
-  "long_description": "GPT-5.6 Model Router is an explicitly invoked governed Codex plugin. Pure schema-v4 policy recommends Luna, Terra, or Sol routes while the root retains authority over ordinary work. Trusted bundled hooks validate route intents before Agent execution, constrain delegation and write ownership, and require hash-bound independent Sol/high review for critical work unless an authorized exception is recorded. Ten schema-v5 roles are leaves by default, with an exact one-level grant permitting bounded depth-2 descendants. Transactional setup enables depth two and preserves unrelated configuration. Hook state remains local under PLUGIN_DATA and stores hashes and route metadata, never raw prompts, messages, diffs, tool output, or secrets. The plugin has no MCP server, hosted backend, connector, analytics, or credential collection.",
+  "long_description": "GPT-5.6 Model Router is a governed Codex plugin. The root may use any model and reasoning effort and may work directly, but once bundled hooks are trusted every root Agent spawn must use a schema-v4 intent prepared by the router, even on turns that do not explicitly invoke its skill. Pure policy selects an enforced Luna, Terra, or Sol route; deviations require user, task-contract, or recorded-failure authority. Hooks constrain write ownership and require hash-bound independent Sol/high review for critical work unless an authorized exception is recorded. Eight schema-v5 roles use Luna/high, Terra/medium-high, and Sol/medium-high. Effective depth is exactly one and every child is a leaf. Transactional setup preserves unrelated configuration and restores the prior depth on uninstall. Hook state remains local under PLUGIN_DATA and stores hashes and route metadata, never raw prompts, messages, diffs, tool output, or secrets. The plugin has no MCP server, hosted backend, connector, analytics, or credential collection.",
   "category": "Productivity",
   "developer": "Pax Dynamics",
   "website_url": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
@@ -17,7 +17,7 @@
     "$route-gpt56-task Handle this task with governed cost-aware GPT-5.6 routing.",
     "$route-gpt56-task Handle this critical change with verified independent review."
   ],
-  "release_version": "0.4.0",
+  "release_version": "0.4.1",
   "bundled_hooks": {
     "included": true,
     "trust_required": true,

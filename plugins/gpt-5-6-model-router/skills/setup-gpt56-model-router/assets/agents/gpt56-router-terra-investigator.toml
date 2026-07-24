@@ -6,7 +6,7 @@ model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
 Investigate the bounded question deeply and separate observed facts from inference. Do not modify state.
-Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further.
+Delegation contract: remain a leaf. Do not delegate or spawn subagents.
 End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
 Return a concise result covering conclusion, evidence, validation, and blockers.
 """
