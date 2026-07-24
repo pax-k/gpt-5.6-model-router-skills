@@ -1,28 +1,28 @@
-# Governed routing policy v0.4
+# Governed routing policy v0.4.1
 
-Governance activates only for a turn whose user prompt explicitly contains
-`$route-gpt56-task`. Non-router turns and their delegation remain unaffected.
+Once plugin hooks are trusted, every root `Agent` spawn is governed, whether or
+not the prompt explicitly contains `$route-gpt56-task`. Ordinary root-direct
+turns remain unaffected and need no route intent.
 
-The root owns the outcome and may execute directly. On an active router turn,
-every root or delegated workstream must first register one schema-v4 intent.
-Ordinary route recommendations are advisory, but a different route requires an
-accountable override. Structural protocol, authority, ownership, critical
-floor, and critical-review rules are enforced by trusted plugin hooks.
+The root owns the outcome and may execute directly on any model or effort.
+Every delegated workstream must first register one schema-v4 intent and use the
+exact emitted request. The recommended route is enforced. A different route
+requires privileged authority. Explicit router turns also register root-direct
+work before closeout.
 
 ## Default frontier
 
 | Work | Preferred route | Policy |
 | --- | --- | --- |
-| Clear, narrow, strongly verified mechanical work | Luna/low worker | Advisory |
-| Ordinary implementation | Terra/medium worker | Advisory |
-| Ordinary read-only exploration | Terra/medium explorer | Advisory |
-| Broad evidence search with competing hypotheses | Terra/high investigator | Advisory |
+| Clear, narrow, strongly verified mechanical work | Luna/high worker | Enforced default |
+| Ordinary implementation | Terra/medium worker | Enforced default |
+| Ordinary read-only exploration | Terra/medium explorer | Enforced default |
+| Broad evidence search with competing hypotheses | Terra/high investigator | Enforced default |
 | Ambiguous, architectural, cross-layer, or critical implementation | Sol/medium engineer | Critical floor when applicable |
-| Difficult debugging or weakly verified critical risk | Sol/high debugger | Critical floor when applicable |
+| Difficult implementation, debugging, quality-first work, or weakly verified critical risk | Sol/high debugger | Critical floor when applicable |
 | Independent critical review | Separate Sol/high reviewer | Required when applicable |
-| Read-only architecture advice | Sol/medium advisor | Advisory |
-| Recorded lower-route failure | Sol/xhigh specialist | Privileged authority required |
-| Hardest quality-first or repeated failure | Sol/max specialist | Privileged authority required |
+| Read-only architecture advice | Sol/medium advisor | Enforced default |
+| Recorded Sol/medium or Sol/high failure | Replan with Sol/high debugger | No higher custom-agent effort |
 
 Model family follows ambiguity, judgment, and risk. Effort follows exploration
 and verification depth. Context breadth alone does not select Sol. See
@@ -30,20 +30,23 @@ and verification depth. Context breadth alone does not select Sol. See
 
 ## Authority
 
-An ordinary noncritical recommendation override may use root authority, but it
-must record a reason code, rationale, and non-empty reference.
-
 The following require `user`, `task_contract`, or `recorded_failure` authority
 and a non-empty reference:
 
+- selecting any route other than the recommendation;
+- selecting a fallback when the preferred route is unavailable;
 - `quality_first`;
-- Sol/xhigh or Sol/max;
 - execution below the critical Sol/medium floor;
-- critical root-direct execution when runtime evidence cannot prove root
-  effort;
 - skipping the required critical review.
 
 User and task-contract authority are escape hatches, not implicit permission.
+The custom-agent ceiling is Sol/high. Recorded failure changes the plan,
+evidence, or work decomposition; it does not select xhigh or max.
+
+The root model and root effort are unrestricted, including for critical
+root-direct execution. The delegated critical floor does not apply to the root.
+Critical root-direct work remains subject to the same manifest-bound
+independent Sol/high review at closeout.
 
 ## Delegation
 
@@ -51,10 +54,10 @@ User and task-contract authority are escape hatches, not implicit permission.
 - A positive bounded fork needs a recorded rationale.
 - `fork_turns: "all"` is valid only for inherited-root execution with an
   accountable override. It cannot include custom role, model, or effort fields.
-- Children are leaves unless their intent grants exactly `one-level`.
-- Depth-two descendants must receive `Delegation grant: none`.
+- Effective depth is exactly one.
+- Every child intent uses `Delegation grant: none`; children cannot delegate.
 - Disjoint writers may overlap. Live writers with equal, ancestor, or
-  descendant owned paths serialize.
+  overlapping owned paths serialize.
 - Children have no commit, tag, or push authority by default.
 
 Use the `spawn_request` emitted by `route_guard.py prepare` exactly. The

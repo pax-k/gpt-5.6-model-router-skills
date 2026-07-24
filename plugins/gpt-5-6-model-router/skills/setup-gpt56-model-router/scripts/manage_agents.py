@@ -29,9 +29,11 @@ EXPECTED_AGENTS = {
     "gpt56-router-sol-debugger.toml": "gpt56_router_sol_debugger",
     "gpt56-router-sol-reviewer.toml": "gpt56_router_sol_reviewer",
     "gpt56-router-terra-investigator.toml": "gpt56_router_terra_investigator",
+    "gpt56-router-sol-advisor.toml": "gpt56_router_sol_advisor",
+}
+RETIRED_AGENTS = {
     "gpt56-router-sol-specialist-xhigh.toml": "gpt56_router_sol_specialist_xhigh",
     "gpt56-router-sol-specialist-max.toml": "gpt56_router_sol_specialist_max",
-    "gpt56-router-sol-advisor.toml": "gpt56_router_sol_advisor",
 }
 LEGACY_SCHEMA2_SHA256 = {
     "gpt56-router-luna-worker.toml": "7aa785ef640d85f1bc36aa28c561daeba05834e6f4d7eaf057b86c6f876355f9",
@@ -68,6 +70,33 @@ LEGACY_SCHEMA4_SHA256 = {
     "gpt56-router-terra-explorer.toml": "2b243e6dea270ce843785137a82ad84da30238067bdc5a892afe82dc883315cd",
     "gpt56-router-terra-investigator.toml": "39ad180f6930c214ac6a8f53fb5e03b60635929a4b7d28a0c1cfb69e23b9bfd3",
     "gpt56-router-terra-worker.toml": "f2e869e226bc7f09d40077eb0d6856f28704acf61806a182f1080c9d93e52384",
+}
+LEGACY_SCHEMA5_SHA256 = {
+    "gpt56-router-luna-worker.toml": {
+        "fab44fd982e8422d95a0a5625450a4e9199b25d8409d03f5ebf13f64f77a4634",
+        "e44b3d55923093b0a38c9238ecdd8bcec4341298f88955099168660fbd38cae3",
+    },
+    "gpt56-router-sol-advisor.toml": {"818f353a27cea8ab7b1eda657119271b060f5aa8eaf3309b60b381840cc696d8"},
+    "gpt56-router-sol-debugger.toml": {"d8a1ce45ffb423fd958dd7c406fd355ed74c834a1027d2c1e24d1bc097551f81"},
+    "gpt56-router-sol-engineer.toml": {"81b8f63fead791a9044a138d14ae4b83132712d6c1ac307fcfec2c243f55f56a"},
+    "gpt56-router-sol-reviewer.toml": {"fb75bfb70637040053d837d82034bc800389649094c371708ab1ae06d2d6847e"},
+    "gpt56-router-terra-explorer.toml": {"8db80e3ae8f1fb2f81158ffd173b840ad75573342ef2f15f421d9f86da915965"},
+    "gpt56-router-terra-investigator.toml": {"8b245072b488b5fad7b44f0f7718d74c728958f2ec109c3cc5368d048c881ad9"},
+    "gpt56-router-terra-worker.toml": {"59abc97e21081affc4bdd8f56b8e24b868174617d6549d86f4eea5e34c408f6e"},
+}
+RETIRED_SHA256 = {
+    "gpt56-router-sol-specialist-xhigh.toml": {
+        LEGACY_SCHEMA2_SHA256["gpt56-router-sol-specialist-xhigh.toml"],
+        LEGACY_SCHEMA3_SHA256["gpt56-router-sol-specialist-xhigh.toml"],
+        LEGACY_SCHEMA4_SHA256["gpt56-router-sol-specialist-xhigh.toml"],
+        "4cb1fde682416fd23b560ee96cb3e6e6a7250154833f25cdeb689721395879c0",
+    },
+    "gpt56-router-sol-specialist-max.toml": {
+        LEGACY_SCHEMA2_SHA256["gpt56-router-sol-specialist-max.toml"],
+        LEGACY_SCHEMA3_SHA256["gpt56-router-sol-specialist-max.toml"],
+        LEGACY_SCHEMA4_SHA256["gpt56-router-sol-specialist-max.toml"],
+        "4806f91add0264401f5b9e09d27b6d0b9663f4745038db17700216b65f9821ca",
+    },
 }
 
 
@@ -188,13 +217,33 @@ def inspect(templates: dict[str, bytes], destination: Path) -> tuple[list[str], 
     return missing, unchanged, divergent
 
 
+def inspect_retired(destination: Path) -> tuple[list[str], list[str]]:
+    owned: list[str] = []
+    divergent: list[str] = []
+    for filename in RETIRED_AGENTS:
+        path = destination / filename
+        if not path.exists():
+            continue
+        if (
+            path.is_file()
+            and hashlib.sha256(path.read_bytes()).hexdigest() in RETIRED_SHA256[filename]
+        ):
+            owned.append(filename)
+        else:
+            divergent.append(filename)
+    return owned, divergent
+
+
 def check_agents(templates: dict[str, bytes], destination: Path) -> Result:
     missing, unchanged, divergent = inspect(templates, destination)
+    retired_owned, retired_divergent = inspect_retired(destination)
     errors: list[str] = []
     if missing:
         errors.append("router setup is missing managed agent files")
     if divergent:
         errors.append("router setup contains divergent managed destinations")
+    if retired_owned or retired_divergent:
+        errors.append("router setup contains retired Sol/xhigh or Sol/max agent files; run install to remove them")
     legacy = destination / ".gpt56-router-backups"
     if legacy.exists():
         errors.append("legacy router backups are inside the custom-agent discovery tree; run install to migrate them")
@@ -204,13 +253,14 @@ def check_agents(templates: dict[str, bytes], destination: Path) -> Result:
         target_dir=str(destination),
         unchanged=unchanged,
         missing=missing,
-        divergent=divergent,
+        divergent=[*divergent, *retired_divergent],
         errors=errors,
     )
 
 
 def install_agents(templates: dict[str, bytes], destination: Path, force: bool) -> Result:
     missing, unchanged, divergent = inspect(templates, destination)
+    retired_owned, retired_divergent = inspect_retired(destination)
     legacy = [
         filename for filename in divergent
         if (destination / filename).is_file()
@@ -219,19 +269,21 @@ def install_agents(templates: dict[str, bytes], destination: Path, force: bool) 
             LEGACY_SCHEMA2_SHA256[filename],
             LEGACY_SCHEMA3_SHA256[filename],
             LEGACY_SCHEMA4_SHA256[filename],
+            *LEGACY_SCHEMA5_SHA256.get(filename, set()),
         }
     ]
     refused = [filename for filename in divergent if filename not in legacy]
-    if refused and not force:
+    if (refused or retired_divergent) and not force:
         return Result(
             ok=False,
             command="install",
             target_dir=str(destination),
             unchanged=unchanged,
             missing=missing,
-            divergent=refused,
+            divergent=[*refused, *retired_divergent],
             errors=[
-                "refusing to overwrite unknown or user-modified files; inspect them and explicitly rerun with --force"
+                "refusing to overwrite or remove unknown or user-modified files; "
+                "inspect them and explicitly rerun with --force"
             ],
         )
 
@@ -249,11 +301,12 @@ def install_agents(templates: dict[str, bytes], destination: Path, force: bool) 
             errors=[f"failed to migrate legacy router backups: {error}"],
         )
     backed_up: list[str] = []
-    if divergent:
+    backup_names = [*divergent, *retired_owned, *retired_divergent]
+    if backup_names:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         backup_dir = backup_root(destination) / timestamp
         backup_dir.mkdir(parents=True, exist_ok=True)
-        for filename in divergent:
+        for filename in backup_names:
             source = destination / filename
             backup = backup_dir / filename
             shutil.copy2(source, backup)
@@ -263,10 +316,14 @@ def install_agents(templates: dict[str, bytes], destination: Path, force: bool) 
     for filename in [*missing, *divergent]:
         atomic_write(destination / filename, templates[filename])
         changed.append(filename)
+    for filename in [*retired_owned, *retired_divergent]:
+        (destination / filename).unlink()
+        changed.append(filename)
 
     final_missing, _, final_divergent = inspect(templates, destination)
+    final_retired_owned, final_retired_divergent = inspect_retired(destination)
     errors: list[str] = []
-    if final_missing or final_divergent:
+    if final_missing or final_divergent or final_retired_owned or final_retired_divergent:
         errors.append("post-install verification failed")
     return Result(
         ok=not errors,
@@ -277,7 +334,7 @@ def install_agents(templates: dict[str, bytes], destination: Path, force: bool) 
         backed_up=backed_up,
         migrated_backups=migrated_backups,
         missing=final_missing,
-        divergent=final_divergent,
+        divergent=[*final_divergent, *final_retired_divergent],
         errors=errors,
     )
 

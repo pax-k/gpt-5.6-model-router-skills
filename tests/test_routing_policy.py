@@ -85,11 +85,11 @@ class RoutingPolicyTests(unittest.TestCase):
 
     def test_recorded_failure_ladder_and_quality_first(self):
         cases = (
-            ("gpt-5.6-luna", "low", "gpt56_router_terra_worker"),
+            ("gpt-5.6-luna", "high", "gpt56_router_terra_worker"),
             ("gpt-5.6-terra", "medium", "gpt56_router_sol_engineer"),
+            ("gpt-5.6-terra", "high", "gpt56_router_sol_engineer"),
             ("gpt-5.6-sol", "medium", "gpt56_router_sol_debugger"),
-            ("gpt-5.6-sol", "high", "gpt56_router_sol_specialist_xhigh"),
-            ("gpt-5.6-sol", "xhigh", "gpt56_router_sol_specialist_max"),
+            ("gpt-5.6-sol", "high", "gpt56_router_sol_debugger"),
         )
         for model, effort, agent in cases:
             failure = {"model": model, "effort": effort, "evidence": "failed focused test"}
@@ -102,7 +102,8 @@ class RoutingPolicyTests(unittest.TestCase):
             "reference": "user requested maximum quality",
         }
         selected = route_task.recommend(self.profile(quality_mode=quality))
-        self.assertEqual(selected["preferred_route"]["agent"], "gpt56_router_sol_specialist_max")
+        self.assertEqual(selected["preferred_route"]["agent"], "gpt56_router_sol_debugger")
+        self.assertEqual(selected["preferred_route"]["reasoning_effort"], "high")
 
     def test_availability_is_evidence_not_route_mutation(self):
         runtime = {

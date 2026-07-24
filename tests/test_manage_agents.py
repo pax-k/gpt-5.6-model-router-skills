@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MANAGER = ROOT / "plugins/gpt-5-6-model-router/skills/setup-gpt56-model-router/scripts/manage_agents.py"
-EXPECTED_COUNT = 10
+EXPECTED_COUNT = 8
 LEGACY_LUNA = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=2
 # Router capability: may_delegate=false
 name = "gpt56_router_luna_worker"
@@ -47,6 +47,30 @@ model_reasoning_effort = "low"
 developer_instructions = """
 Complete the narrow assignment, preserve scope, and avoid architectural decisions.
 Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Run the requested checks.
+Return a concise result covering outcome, changed files, validation, and blockers.
+"""
+'''
+SCHEMA5_LUNA_LOW = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_luna_worker; schema=5
+name = "gpt56_router_luna_worker"
+description = "Clear, repeatable, low-risk work with objective acceptance criteria."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+developer_instructions = """
+Complete the narrow assignment, preserve scope, and avoid architectural decisions.
+Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Run the requested checks.
+End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
+Return a concise result covering outcome, changed files, validation, and blockers.
+"""
+'''
+RETIRED_XHIGH = '''# Managed by gpt-5-6-model-router; agent=gpt56_router_sol_specialist_xhigh; schema=5
+name = "gpt56_router_sol_specialist_xhigh"
+description = "Bounded specialist work after a recorded lower-route failure."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
+developer_instructions = """
+Resolve the difficult bounded assignment using the supplied failure evidence.
+Delegation contract: without the exact line `Delegation grant: one-level`, remain a leaf and do not delegate. With that grant, you may create useful bounded descendants; give every descendant the exact line `Delegation grant: none`, and they cannot delegate further. Keep changes narrow and validate the failed invariant.
+End with the Router-Result footer supplied in the task; copy its intent exactly and choose ok, blocked, or failed.
 Return a concise result covering outcome, changed files, validation, and blockers.
 """
 '''
@@ -104,6 +128,34 @@ class ManageAgentsTests(unittest.TestCase):
         self.assertEqual(installed.returncode, 0, result)
         self.assertEqual(Path(result["backed_up"][0]).read_text(), SCHEMA4_LUNA)
         self.assertIn("schema=5", target.read_text())
+
+    def test_byte_identical_previous_schema5_auto_upgrades_with_backup(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-luna-worker.toml"
+        target.write_text(SCHEMA5_LUNA_LOW)
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), SCHEMA5_LUNA_LOW)
+        self.assertIn('model_reasoning_effort = "high"', target.read_text())
+
+    def test_retired_agent_is_backed_up_and_removed_on_upgrade(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-sol-specialist-xhigh.toml"
+        target.write_text(RETIRED_XHIGH)
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertFalse(target.exists())
+        self.assertEqual(Path(result["backed_up"][0]).read_text(), RETIRED_XHIGH)
+        self.assertIn(target.name, result["changed"])
+
+    def test_modified_retired_agent_requires_force(self):
+        self.destination.mkdir(parents=True)
+        target = self.destination / "gpt56-router-sol-specialist-xhigh.toml"
+        target.write_text(RETIRED_XHIGH + "# user edit\n")
+        installed, result = self.run_manager("install")
+        self.assertEqual(installed.returncode, 1, result)
+        self.assertTrue(target.exists())
+        self.assertIn(target.name, result["divergent"])
 
     def test_modified_schema2_refuses_without_force(self):
         self.destination.mkdir(parents=True)

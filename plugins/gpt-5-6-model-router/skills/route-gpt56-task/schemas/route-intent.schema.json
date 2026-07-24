@@ -16,7 +16,7 @@
     "constraints": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "verification": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "fork_turns": {"anyOf": [{"enum": ["none", "all"]}, {"type": "string", "pattern": "^[1-9][0-9]*$"}, {"type": "integer", "minimum": 1}]},
-    "delegation_grant": {"enum": ["none", "one-level"]},
+    "delegation_grant": {"const": "none"},
     "commit_authority": {"type": "boolean"},
     "supported_spawn_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "selected_route": {"$ref": "route-recommendation.schema.json#/$defs/route"},

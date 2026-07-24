@@ -57,7 +57,7 @@ def validate() -> list[str]:
     require(isinstance(disclosure, dict) and disclosure.get("included") is True, "listing must disclose bundled hooks", errors)
     require(disclosure.get("trust_required") is True, "listing must disclose hook trust", errors)
     require(listing.get("name") == manifest.get("interface", {}).get("displayName"), "listing and manifest names differ", errors)
-    require(listing.get("release_version") == "0.4.0", "listing release version must be 0.4.0", errors)
+    require(listing.get("release_version") == "0.4.1", "listing release version must be 0.4.1", errors)
     starter = listing.get("starter_prompts", [])
     require(1 <= len(starter) <= 3, "listing must contain one to three starter prompts", errors)
     require(starter == manifest.get("interface", {}).get("defaultPrompt"), "listing and manifest starter prompts differ", errors)
@@ -98,11 +98,19 @@ def validate() -> list[str]:
         require(isinstance(identifier, str) and identifier not in identifiers, f"duplicate reviewer case: {identifier}", errors)
         if isinstance(identifier, str):
             identifiers.add(identifier)
-        require(str(case.get("prompt", "")).startswith("$route-gpt56-task"), f"reviewer prompt must invoke router: {identifier}", errors)
+        prompt = str(case.get("prompt", ""))
+        if identifier == "negative-1-missing-intent":
+            require(
+                not prompt.startswith("$route-gpt56-task"),
+                "global-enforcement negative case must omit explicit router invocation",
+                errors,
+            )
+        else:
+            require(prompt.startswith("$route-gpt56-task"), f"reviewer prompt must invoke router: {identifier}", errors)
 
     require(manifest.get("hooks") == "./hooks/hooks.json", "published manifest must retain bundled hooks", errors)
     require((PLUGIN / "hooks/hooks.json").is_file(), "published hook config is missing", errors)
-    require(str(manifest.get("version", "")).startswith("0.4.0+codex."), "manifest is not a v0.4.0 candidate", errors)
+    require(str(manifest.get("version", "")).startswith("0.4.1+codex."), "manifest is not a v0.4.1 candidate", errors)
     require((PLUGIN / "LICENSE").is_file(), "plugin package license is missing", errors)
     require((PLUGIN / "vendor/tomli/LICENSE").is_file(), "vendored dependency license is missing", errors)
 

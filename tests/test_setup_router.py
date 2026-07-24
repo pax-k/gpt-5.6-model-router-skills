@@ -42,18 +42,18 @@ class SetupRouterTests(unittest.TestCase):
 
     def test_clean_install_check_uninstall(self):
         installed, result = self.run_setup("install")
-        self.assertEqual(installed.returncode, 0, result); self.assertEqual(result["depth"]["effective_depth"], 2)
+        self.assertEqual(installed.returncode, 0, result); self.assertEqual(result["depth"]["effective_depth"], 1)
         self.assertIn("schema=5", next((self.codex / "agents").glob("*.toml")).read_text().splitlines()[0])
         checked, result = self.run_setup("check"); self.assertEqual(checked.returncode, 0, result)
         removed, result = self.run_setup("uninstall"); self.assertEqual(removed.returncode, 0, result)
         self.assertFalse(self.config.exists()); self.assertFalse(list((self.codex / "agents").glob("gpt56-router-*.toml")))
 
-    def test_depth_absent_one_two_and_greater_than_two(self):
+    def test_depth_is_exactly_one_and_prior_value_is_restored(self):
         for initial, expected_after_remove in ((None, None), (1, 1), (2, 2), (4, 4)):
             with self.subTest(initial=initial):
                 if initial is not None: self.write_config(f"[agents]\nmax_depth = {initial}\n")
                 installed, result = self.run_setup("install"); self.assertEqual(installed.returncode, 0, result)
-                self.assertGreaterEqual(result["depth"]["effective_depth"], 2)
+                self.assertEqual(result["depth"]["effective_depth"], 1)
                 removed, result = self.run_setup("uninstall"); self.assertEqual(removed.returncode, 0, result)
                 if expected_after_remove is None: self.assertFalse(self.config.exists())
                 else: self.assertIn(f"max_depth = {expected_after_remove}", self.config.read_text())
@@ -71,6 +71,7 @@ class SetupRouterTests(unittest.TestCase):
         }))
         installed, result = self.run_setup("install"); self.assertEqual(installed.returncode, 0, result)
         self.assertIn("depth; schema=3", self.config.read_text())
+        self.assertIn("max_depth = 1", self.config.read_text())
         self.config.write_text(self.config.read_text() + "# later unrelated edit\n")
         removed, result = self.run_setup("uninstall"); self.assertEqual(removed.returncode, 0, result)
         self.assertIn("max_depth = 1", self.config.read_text()); self.assertIn("later unrelated edit", self.config.read_text())
@@ -95,9 +96,29 @@ class SetupRouterTests(unittest.TestCase):
 
     def test_user_edited_managed_depth_blocks_all_mutation(self):
         self.run_setup("install"); agent = next((self.codex / "agents").glob("*.toml")); before = agent.read_bytes()
-        self.config.write_text(self.config.read_text().replace("max_depth = 2", "max_depth = 3"))
+        self.config.write_text(self.config.read_text().replace("max_depth = 1", "max_depth = 3"))
         refused, result = self.run_setup("uninstall"); self.assertEqual(refused.returncode, 1)
         self.assertEqual(agent.read_bytes(), before); self.assertIn("max_depth = 3", self.config.read_text())
+
+    def test_owned_depth_two_state_is_contracted_and_original_restored(self):
+        original = b"[agents]\nmax_depth = 4\n"
+        managed = b"[agents]\n# Managed by gpt-5-6-model-router; depth; schema=3\nmax_depth = 2\n"
+        self.codex.mkdir(parents=True)
+        backup = self.codex / "depth-two-backup.toml"
+        backup.write_bytes(original)
+        self.config.write_bytes(managed)
+        (self.codex / ".gpt56-router-depth-state.json").write_text(json.dumps({
+            "schema": 3,
+            "managed_value": 2,
+            "prior_depth": 4,
+            "backup_path": str(backup),
+        }))
+        installed, result = self.run_setup("install")
+        self.assertEqual(installed.returncode, 0, result)
+        self.assertEqual(result["depth"]["effective_depth"], 1)
+        removed, result = self.run_setup("uninstall")
+        self.assertEqual(removed.returncode, 0, result)
+        self.assertIn("max_depth = 4", self.config.read_text())
 
     def test_post_install_failure_rolls_back_templates_and_depth(self):
         failed = manage_agents.Result(ok=False, command="check", target_dir=str(self.codex / "agents"), errors=["injected post-check failure"])

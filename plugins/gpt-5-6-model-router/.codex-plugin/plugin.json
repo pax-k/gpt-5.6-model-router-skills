@@ -1,7 +1,7 @@
 {
   "name": "gpt-5-6-model-router",
-  "version": "0.4.0+codex.20260723152638",
-  "description": "Governed GPT-5.6 routing with accountable overrides and verified critical review.",
+  "version": "0.4.1+codex.20260724081540",
+  "description": "Enforced GPT-5.6 subagent routing with authorized overrides and verified critical review.",
   "author": {
     "name": "Pax Dynamics",
     "email": "hello@paxdynamics.com",
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "GPT-5.6 Model Router",
     "shortDescription": "Route work to GPT-5.6 agents",
-    "longDescription": "Route explicit GPT-5.6 work with cost-aware Luna, Terra, and Sol defaults, accountable overrides, bounded delegation, pre-spawn protocol checks, and verified independent review for critical changes.",
+    "longDescription": "Require every root Agent spawn to use an enforced Luna, Terra, or Sol route prepared through the plugin, with authorized overrides, leaf-only children at depth one, pre-spawn protocol checks, and verified independent review for critical changes. Root-direct work remains unrestricted.",
     "developerName": "Pax Dynamics",
     "category": "Productivity",
     "websiteURL": "https://paxdynamics.com/plugins/gpt-5-6-model-router",
@@ -33,7 +33,7 @@
       "Cost-aware GPT-5.6 routing",
       "Accountable delegation judgment",
       "Pre-spawn protocol enforcement",
-      "Bounded one-level descendants",
+      "Leaf-only depth-one children",
       "Verified critical review"
     ],
     "defaultPrompt": [

@@ -291,7 +291,6 @@ def _message(
     route: Mapping[str, Any] | None,
     *,
     include_role: bool,
-    governance: Mapping[str, str] | None,
 ) -> str:
     lines = [f"Router-Intent: {intent_id}", ""]
     if include_role and route is not None:
@@ -312,26 +311,13 @@ def _message(
             f"Commit authority: {'granted' if intent['commit_authority'] else 'none'}",
         )
     )
-    if intent["delegation_grant"] == "one-level":
-        lines.append("- You may create bounded descendants only through the governed router; every descendant must receive Delegation grant: none.")
-    else:
-        lines.append("- Remain a leaf and do not delegate or spawn subagents.")
+    lines.append("- Remain a leaf and do not delegate or spawn subagents.")
     if intent.get("review_target"):
         target = intent["review_target"]
         lines.extend(
             (
                 f"Review source intent: {target['source_intent_id']}",
                 f"Review manifest SHA-256: {target['manifest_sha256']}",
-            )
-        )
-    if governance:
-        lines.extend(
-            (
-                "",
-                "Governance context for any granted descendant:",
-                f"- State directory: {governance['state_dir']}",
-                f"- Session ID: {governance['session_id']}",
-                f"- Root turn ID: {governance['turn_id']}",
             )
         )
     lines.extend(
@@ -394,23 +380,27 @@ def prepare(
     override = intent.get("override")
     authority = _authority(intent)
     if execution == "delegate" and selected is not None:
-        if not _routes_equal(selected, recommendation["preferred_route"]) and not override:
-            errors.append("route override requires reason, rationale, authority, and reference")
-        if recommendation["availability"] == "unavailable" and not override:
-            errors.append("unavailable preferred route requires an accountable fallback override")
+        route_differs = not _routes_equal(selected, recommendation["preferred_route"])
+        if route_differs:
+            if not override:
+                errors.append(
+                    "enforced route differs from the recommendation; provide an authorized override "
+                    "with reason, rationale, authority, and reference"
+                )
+            elif authority not in PRIVILEGED_AUTHORITIES:
+                errors.append(
+                    "route deviations require user, task_contract, or recorded_failure authority"
+                )
+        if recommendation["availability"] == "unavailable":
+            if not override:
+                errors.append("unavailable preferred route requires an authorized fallback override")
+            elif authority not in PRIVILEGED_AUTHORITIES:
+                errors.append(
+                    "unavailable-route fallback requires user, task_contract, or recorded_failure authority"
+                )
         if recommendation["constraints"]["critical"] and not _critical_floor_ok(selected):
             if authority not in PRIVILEGED_AUTHORITIES:
                 errors.append("critical work requires at least gpt-5.6-sol/medium or privileged override authority")
-        if selected["reasoning_effort"] in ("xhigh", "max") and authority not in PRIVILEGED_AUTHORITIES:
-            errors.append("xhigh and max routes require user, task_contract, or recorded_failure authority")
-    if execution == "root" and recommendation["constraints"]["critical"]:
-        if authority not in PRIVILEGED_AUTHORITIES:
-            errors.append(
-                "critical root-direct execution requires user, task_contract, or recorded_failure "
-                "authority because the hook cannot prove root reasoning effort"
-            )
-        elif not override:
-            errors.append("critical root-direct execution requires an accountable override")
     if execution == "inherited" and not override:
         errors.append("inherited full-history execution requires an accountable override")
     if intent["fork_turns"] not in ("none", "all") and not override:
@@ -431,32 +421,30 @@ def prepare(
         return {"ok": False, "errors": errors, "warnings": warnings, "evidence": {}, "data": None}
 
     intent_id = str(uuid.uuid4())
-    governance = None
     state_path = None
     if state_dir is not None:
         if not session_id or not turn_id:
             raise ContractError("state registration requires session_id and turn_id")
         found = _find_active_state(state_dir, session_id, turn_id)
         if found is None:
-            raise ContractError("router turn is not active; invoke $route-gpt56-task and verify hooks")
+            raise ContractError("governed turn state is not active; verify that the plugin hooks are trusted")
         state_path, _ = found
-        governance = {"state_dir": str(state_dir), "session_id": session_id, "turn_id": turn_id}
 
     request: dict[str, Any] | None = None
     if execution in ("delegate", "inherited"):
         request = {"task_name": _slug(intent["task_name"]), "fork_turns": intent["fork_turns"]}
         fields = set(intent["supported_spawn_fields"])
         if execution == "inherited":
-            request["message"] = _message(intent_id, intent, None, include_role=False, governance=governance)
+            request["message"] = _message(intent_id, intent, None, include_role=False)
         elif "agent_type" in fields:
             request["agent_type"] = selected["agent"]
-            request["message"] = _message(intent_id, intent, selected, include_role=False, governance=governance)
+            request["message"] = _message(intent_id, intent, selected, include_role=False)
             if len(request["message"]) > CUSTOM_AGENT_LIMIT:
                 errors.append(f"spawn message exceeds {CUSTOM_AGENT_LIMIT} characters")
         elif {"model", "reasoning_effort"}.issubset(fields):
             request["model"] = selected["model"]
             request["reasoning_effort"] = selected["reasoning_effort"]
-            request["message"] = _message(intent_id, intent, selected, include_role=True, governance=governance)
+            request["message"] = _message(intent_id, intent, selected, include_role=True)
             if len(request["message"]) > MODEL_OVERRIDE_LIMIT:
                 errors.append(f"spawn message exceeds {MODEL_OVERRIDE_LIMIT} characters")
         else:
@@ -751,10 +739,17 @@ def _extract_agent_id(value: Any) -> str | None:
 
 def hook_user_prompt(event: Mapping[str, Any]) -> dict[str, Any]:
     prompt = event.get("prompt")
-    if not isinstance(prompt, str) or not ROUTER_INVOCATION.search(prompt):
-        return {}
-    root = _hook_root(required=True)
-    assert root is not None
+    explicitly_invoked = isinstance(prompt, str) and bool(ROUTER_INVOCATION.search(prompt))
+    root = _hook_root()
+    if root is None:
+        return _hook_output(
+            event="UserPromptSubmit",
+            context=(
+                "GPT-5.6 router state is unavailable because PLUGIN_DATA is missing. "
+                "Root-direct work may continue, but trusted enforcement will deny every Agent spawn "
+                "until plugin state is restored."
+            ),
+        )
     session_id = str(event.get("session_id", "unknown"))
     turn_id = str(event.get("turn_id", "unknown"))
     path = _state_path(root, session_id, turn_id)
@@ -776,6 +771,7 @@ def hook_user_prompt(event: Mapping[str, Any]) -> dict[str, Any]:
                 "root_transcript_sha256": _digest_text(event.get("transcript_path")),
                 "cwd_sha256": _digest_text(str(event.get("cwd", ""))),
                 "root_model": event.get("model"),
+                "explicit_invocation": explicitly_invoked,
                 "activated_at": _now(),
                 "updated_at": _now(),
                 "completed_at": None,
@@ -798,23 +794,39 @@ def hook_user_prompt(event: Mapping[str, Any]) -> dict[str, Any]:
         f'--session-id "{session_id}" --turn-id "{turn_id}" --json'
     )
     context = (
-        "GPT-5.6 router governance is active for this turn. Register every root or delegated "
-        f"workstream before closeout. Prepare command: {command}"
+        "GPT-5.6 router enforcement is active. Before every Agent spawn, register a v4 route "
+        f"intent and use the exact spawn_request returned by this command: {command}"
     )
+    if explicitly_invoked:
+        context += " This explicit router turn must also register root-direct execution before closeout if no Agent is spawned."
     return _hook_output(event="UserPromptSubmit", context=context)
 
 
 def hook_pre_tool(event: Mapping[str, Any]) -> dict[str, Any]:
+    tool_name = str(event.get("tool_name", ""))
     root = _hook_root()
     if root is None:
+        if tool_name == "Agent":
+            return _deny(
+                None,
+                "ROUTER_STATE_UNAVAILABLE",
+                "Agent spawning is denied because governed router state is unavailable. "
+                "Restore PLUGIN_DATA and trusted plugin hooks, then prepare a v4 route intent.",
+            )
         return {}
     session_id = str(event.get("session_id", "unknown"))
     turn_id = str(event.get("turn_id")) if event.get("turn_id") is not None else None
     found = _find_active_state(root, session_id, turn_id)
     if found is None:
+        if tool_name == "Agent":
+            return _deny(
+                None,
+                "MISSING_GOVERNED_TURN",
+                "Agent spawning requires the GPT-5.6 router prompt hook and a prepared v4 route intent. "
+                "Verify hook trust, then run route_guard.py prepare and retry its exact spawn_request.",
+            )
         return {}
     path, state = found
-    tool_name = str(event.get("tool_name", ""))
     tool_input = event.get("tool_input")
     if not isinstance(tool_input, Mapping):
         return _deny(path, "MALFORMED_TOOL_INPUT", "Router governance requires an object tool input.")
@@ -885,11 +897,7 @@ def hook_pre_tool(event: Mapping[str, Any]) -> dict[str, Any]:
     if actor is None:
         return _deny(path, "UNKNOWN_DELEGATOR", "Could not prove the delegating actor for this routed spawn.")
     if actor != "root":
-        parent = state.get("intents", {}).get(actor, {})
-        if parent.get("delegation_grant") != "one-level":
-            return _deny(path, "UNAUTHORIZED_DESCENDANT", "This routed child is a leaf and cannot delegate.")
-        if record.get("delegation_grant") != "none":
-            return _deny(path, "RECURSIVE_DESCENDANT", "Depth-two descendants must be leaves.")
+        return _deny(path, "UNAUTHORIZED_DESCENDANT", "Depth-one routed children are leaves and cannot delegate.")
 
     tool_use_id = str(event.get("tool_use_id", uuid.uuid4()))
 
@@ -991,7 +999,7 @@ def hook_subagent_start(event: Mapping[str, Any]) -> dict[str, Any]:
         record["actual_agent"] = agent_type
         record["actual_model"] = event.get("model")
         record["actual_effort"] = event.get("reasoning_effort") or event.get("model_reasoning_effort")
-        record["expected_depth"] = 1 if record.get("delegator_intent_id") == "root" else 2
+        record["expected_depth"] = 1
         record["actual_depth"] = actual_depth
         record["expected_parent_intent_id"] = record.get("delegator_intent_id")
         record["actual_parent_intent_id"] = (
@@ -1140,6 +1148,14 @@ def hook_stop(event: Mapping[str, Any]) -> dict[str, Any]:
     path, state = found
     intents = state.get("intents", {})
     if not intents:
+        if not state.get("explicit_invocation"):
+            def complete_unrouted(current: dict[str, Any]) -> None:
+                current["active"] = False
+                current["completed_at"] = _now()
+                current["updated_at"] = _now()
+
+            _with_lock(path, complete_unrouted)
+            return {"continue": True}
         return _hook_output(
             event="Stop",
             reason="Register at least one v4 route intent, including root-direct execution, before closeout.",

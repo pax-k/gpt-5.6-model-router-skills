@@ -101,12 +101,14 @@ def _replace_depth(content: bytes, value: int, marker: str = MARKER) -> bytes:
     return ("\n".join(lines).rstrip() + "\n").encode()
 
 
-def _restore_depth(content: bytes, prior_depth: int | None) -> bytes:
+def _restore_depth(content: bytes, prior_depth: int | None, managed_value: int) -> bytes:
     lines = content.decode("utf-8").splitlines()
     marker_indices = [i for i, line in enumerate(lines) if line == MARKER]
     if len(marker_indices) != 1: raise ValueError("managed depth marker is missing or duplicated")
     marker = marker_indices[0]
-    if marker + 1 >= len(lines) or not re.fullmatch(r"\s*max_depth\s*=\s*2\s*", lines[marker + 1]):
+    if marker + 1 >= len(lines) or not re.fullmatch(
+        rf"\s*max_depth\s*=\s*{managed_value}\s*", lines[marker + 1]
+    ):
         raise ValueError("managed depth entry was edited")
     if prior_depth is None:
         del lines[marker:marker + 2]
@@ -144,18 +146,25 @@ def preflight(command: str, codex: Path) -> Result:
     marker = MARKER.encode() in content
     legacy_marker = LEGACY_MARKER.encode() in content
     if state:
-        if state.get("schema") != 3 or state.get("managed_value") != 2: return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["router depth state is unrecognized"])
-        if not marker or depth != 2: return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["managed depth entry was edited; refusing to overwrite it"])
-        return _result(command, config, state_path, ok=True, effective_depth=depth, managed=True, unchanged=["managed depth entry is intact"])
+        managed_value = state.get("managed_value")
+        if state.get("schema") != 3 or managed_value not in (1, 2): return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["router depth state is unrecognized"])
+        if not marker or depth != managed_value: return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["managed depth entry was edited; refusing to overwrite it"])
+        if managed_value == 2 and command == "check":
+            return _result(command, config, state_path, ok=False, effective_depth=depth, managed=True, errors=["managed depth is two; run install to contract it to one"])
+        status = "managed depth entry is intact" if managed_value == 1 else "managed depth-two entry can be contracted"
+        return _result(command, config, state_path, ok=True, effective_depth=depth, managed=True, unchanged=[status])
     if marker: return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["managed depth marker exists without trusted state"])
     if legacy or legacy_marker:
         if not (legacy and legacy_marker and depth == 2):
             return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["legacy router-owned depth entry is not intact"])
         _, legacy_error = _legacy_original_depth(codex, legacy)
         if legacy_error: return _result(command, config, state_path, ok=False, effective_depth=depth, errors=[legacy_error])
+        if command == "check":
+            return _result(command, config, state_path, ok=False, effective_depth=2, managed=True, errors=["legacy depth is two; run install to contract it to one"])
         return _result(command, config, state_path, ok=True, effective_depth=2, managed=True, unchanged=["legacy router-owned depth can be adopted"])
     if command == "uninstall": return _result(command, config, state_path, ok=True, effective_depth=depth, unchanged=["no router-owned depth entry"])
-    if depth is not None and depth >= 2: return _result(command, config, state_path, ok=True, effective_depth=depth, unchanged=["existing depth already satisfies the router"])
+    if depth == 1: return _result(command, config, state_path, ok=True, effective_depth=depth, unchanged=["existing depth already satisfies the router"])
+    if command == "check": return _result(command, config, state_path, ok=False, effective_depth=depth, errors=["agents.max_depth must equal 1; run install"])
     return _result(command, config, state_path, ok=True, effective_depth=depth, unchanged=["depth entry can be installed"])
 
 
@@ -166,13 +175,26 @@ def install(codex: Path) -> Result:
     content = config.read_bytes() if config.exists() else b""
     legacy_path = codex / LEGACY_STATE_NAME
     legacy, _ = _load_json(legacy_path)
-    if ready.managed and state_path.exists(): return ready
+    state, _ = _load_json(state_path)
+    if ready.managed and state_path.exists() and state and state.get("managed_value") == 1: return ready
+    if ready.managed and state_path.exists() and state and state.get("managed_value") == 2:
+        managed = _replace_depth(content, 1)
+        state["managed_value"] = 1
+        try:
+            atomic_write(config, managed)
+            atomic_write(state_path, (json.dumps(state, indent=2, sort_keys=True) + "\n").encode())
+        except OSError as error:
+            return _result("install", config, state_path, ok=False, effective_depth=ready.effective_depth, errors=[f"depth contraction failed: {error}"])
+        checked = preflight("check", codex)
+        checked.command = "install"
+        checked.changed = ["agents.max_depth=1", "depth ownership state"]
+        return checked
     if legacy:
         prior_depth, error = _legacy_original_depth(codex, legacy)
         if error: return _result("install", config, state_path, ok=False, effective_depth=2, errors=[error])
-        managed = _replace_depth(content, 2)
+        managed = _replace_depth(content, 1)
         backup_path = str(legacy["backup_path"])
-    elif ready.effective_depth is not None and ready.effective_depth >= 2:
+    elif ready.effective_depth == 1:
         return ready
     else:
         prior_depth = ready.effective_depth
@@ -181,8 +203,8 @@ def install(codex: Path) -> Result:
         backup = backup_dir / "config.toml"
         backup.write_bytes(content)
         backup_path = str(backup)
-        managed = _replace_depth(content, 2)
-    state = {"schema": 3, "managed_value": 2, "prior_depth": prior_depth, "backup_path": backup_path}
+        managed = _replace_depth(content, 1)
+    state = {"schema": 3, "managed_value": 1, "prior_depth": prior_depth, "backup_path": backup_path}
     try:
         atomic_write(config, managed)
         atomic_write(state_path, (json.dumps(state, indent=2, sort_keys=True) + "\n").encode())
@@ -190,7 +212,7 @@ def install(codex: Path) -> Result:
     except OSError as error:
         return _result("install", config, state_path, ok=False, effective_depth=ready.effective_depth, errors=[f"depth install failed: {error}"])
     checked = preflight("check", codex)
-    checked.command = "install"; checked.changed = ["agents.max_depth=2", "depth ownership state"]
+    checked.command = "install"; checked.changed = ["agents.max_depth=1", "depth ownership state"]
     checked.backed_up = [backup_path]
     return checked
 
@@ -202,7 +224,7 @@ def uninstall(codex: Path) -> Result:
     state, _ = _load_json(state_path)
     if state is None: return _result("uninstall", config, state_path, ok=False, errors=["legacy depth must be adopted with install before uninstall"])
     current = config.read_bytes()
-    try: restored = _restore_depth(current, state.get("prior_depth"))
+    try: restored = _restore_depth(current, state.get("prior_depth"), int(state.get("managed_value")))
     except ValueError as error: return _result("uninstall", config, state_path, ok=False, effective_depth=ready.effective_depth, errors=[str(error)])
     try:
         if restored: atomic_write(config, restored)

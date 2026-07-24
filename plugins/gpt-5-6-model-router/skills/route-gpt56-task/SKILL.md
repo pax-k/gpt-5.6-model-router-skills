@@ -1,21 +1,25 @@
 ---
 name: route-gpt56-task
-description: Explicitly activate governed GPT-5.6 routing for a task, preserving root autonomy while enforcing routed protocol, authority, critical-review, ownership, and evidence invariants.
+description: Prepare governed GPT-5.6 route intents and exact Agent spawn requests while trusted hooks enforce routing, authority, critical-review, ownership, and evidence invariants for every root spawn.
 ---
 
 # Route GPT-5.6 work with governed autonomy
 
-This skill activates only when explicitly invoked. It governs the active turn,
-not unrelated delegation in other turns.
+This skill remains explicit-only in discovery. Once the plugin hooks are
+trusted, however, every root `Agent` spawn on every turn must pass through
+`route_guard.py prepare` and use its exact emitted `spawn_request`.
 
 The root owns the result and decides whether delegation has positive expected
-value. Root-direct execution remains valid. Once governance is active, register every root or delegated workstream before doing or spawning that work.
+value. Root-direct execution remains valid on any root model or effort. An
+explicit `$route-gpt56-task` turn also registers root-direct work before
+closeout; an ordinary root-only turn needs no intent.
 
 ## Route on two independent axes
 
 Choose model family from ambiguity, required judgment, and risk:
 
-- Luna for clear, repeatable, low-risk mechanical work.
+- Luna/high for clear, repeatable, low-risk mechanical work that still benefits
+  from strong verification.
 - Terra for bounded implementation, exploration, and evidence-led
   investigation.
 - Sol for ambiguity, architecture, cross-layer work, difficult debugging,
@@ -23,14 +27,11 @@ Choose model family from ambiguity, required judgment, and risk:
 
 Choose effort from exploration and verification burden:
 
-- low for straightforward latency-sensitive work;
 - medium for ordinary repository reasoning;
 - high for competing hypotheses, complex logic, edge cases, or review;
-- xhigh after recorded lower-route failure;
-- max for explicitly authorized hardest quality-first work.
 
-Do not create routes outside the bundled ten-role frontier. In particular,
-Terra/low remains experimental and is not a v0.4.0 role. See
+Do not create routes outside the bundled eight-role frontier. Low, xhigh, and
+max remain valid runtime efforts but are not custom-agent routes in v0.4.1. See
 `references/model-effort-research.md`.
 
 ## Register before execution
@@ -50,8 +51,8 @@ The `UserPromptSubmit` hook supplies the active state directory, session, and
 turn values. Construct a schema-v4 task profile and route intent. Schema v3 is
 rejected; follow `references/migration-v0.4.md`.
 
-- For root-direct execution, use `execution_mode: "root"` and register before
-  changing state.
+- On an explicit router turn using root-direct execution, use
+  `execution_mode: "root"` and register before changing state.
 - For delegation, use `execution_mode: "delegate"` and pass the emitted
   `spawn_request` to `Agent` exactly.
 - For inherited full-history execution, use `execution_mode: "inherited"`,
@@ -65,24 +66,29 @@ credentials or secret-like values.
 
 ## Authority and overrides
 
-Ordinary noncritical route choices remain advisory, but selecting a different
+The recommendation is the enforced delegated route. Selecting a different
 route requires an override containing reason code, rationale, authority, and
-reference.
+reference, with `user`, `task_contract`, or `recorded_failure` authority.
+Root rationale alone cannot change the selected agent, model, or effort.
 
-`quality_first`, xhigh, max, critical-floor exceptions, critical root-direct
-execution without provable effort, or skipped critical review require `user`,
+`quality_first`, delegated critical-floor exceptions, or skipped critical
+review require `user`,
 `task_contract`, or `recorded_failure` authority. Root rationale alone is not
-sufficient.
+sufficient. Recorded Sol/high failure is replanned at the Sol/high ceiling
+rather than escalating effort.
+
+The router never constrains the root model or root reasoning effort. Critical
+root-direct work still requires a current manifest-bound independent Sol/high
+review before closeout.
 
 ## Delegate compactly
 
-Children are leaves unless the intent grants exactly `one-level`. A granted
-child may register bounded descendants, but every descendant must use
-`Delegation grant: none`.
+Every routed child is a leaf at depth one. `delegation_grant` must be `none`;
+children cannot register descendants or spawn subagents.
 
-Parallel writers require disjoint owned paths. Serialize equal, ancestor, or
-descendant ownership. Children have no commit, tag, or push authority unless
-their intent explicitly grants it.
+Parallel writers require disjoint owned paths. Serialize equal or overlapping
+ownership. Children have no commit, tag, or push authority unless their intent
+explicitly grants it.
 
 ## Bind critical review
 
@@ -113,5 +119,5 @@ Trusted hooks are enforceable guardrails, not an adversarial security boundary.
 Specialized tool paths may bypass normal hooks, hooks can be disabled, and
 subagents inherit the active sandbox and approval state.
 
-See `references/routing-policy.md` for enforced versus advisory rules and
+See `references/routing-policy.md` for enforced rules and
 `references/runtime-evidence.md` for fresh-install acceptance.

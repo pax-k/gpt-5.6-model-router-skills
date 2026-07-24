@@ -1,6 +1,6 @@
 ---
 name: setup-gpt56-model-router
-description: Install, verify, upgrade, or uninstall the ten schema-v5 GPT-5.6 roles and managed depth-two capability, and verify stable hook and multi-agent runtime support.
+description: Install, verify, upgrade, or uninstall the eight schema-v5 GPT-5.6 roles and managed depth-one capability, and verify stable hook and multi-agent runtime support.
 ---
 
 # Set up the GPT-5.6 model router
@@ -15,14 +15,17 @@ python3 <skill-directory>/scripts/setup_router.py uninstall --json
 ```
 
 `install` preflights templates, runtime features, and depth before mutation. It
-installs ten schema-v5 roles and ensures effective depth is at least two while
-preserving higher values. A managed depth entry edited after installation is
-never overwritten. Failed post-install verification rolls template and depth
-changes back together.
+installs eight schema-v5 roles and ensures effective depth is exactly one.
+Existing values are backed up and restored on uninstall. An intact router-owned
+depth-two entry is contracted automatically; a managed entry edited after
+installation is never overwritten. Failed post-install verification rolls
+template and depth changes back together.
 
-Byte-identical schema-2, schema-3, and schema-4 templates upgrade automatically
-after backup. Modified templates are refused unless `install --force`; force
-never bypasses depth ownership. Backups remain outside custom-agent discovery.
+Byte-identical schema-2, schema-3, schema-4, and prior schema-5 templates
+upgrade automatically after backup. Upgrading also backs up and removes
+byte-identical retired Sol/xhigh and Sol/max templates. Modified current or
+retired templates are refused unless `install --force`; force never bypasses
+depth ownership. Backups remain outside custom-agent discovery.
 
 The plugin bundles lifecycle hooks. Installation and enablement do not trust
 them automatically. After install or upgrade:

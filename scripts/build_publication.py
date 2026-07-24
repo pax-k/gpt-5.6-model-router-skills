@@ -67,7 +67,7 @@ def source_date_epoch() -> int:
         if epoch < 0:
             raise ValueError("SOURCE_DATE_EPOCH must be non-negative")
         return epoch
-    for ref in ("v0.4.0", "HEAD"):
+    for ref in ("HEAD",):
         completed = subprocess.run(
             ["git", "log", "-1", "--format=%ct", ref],
             cwd=ROOT,

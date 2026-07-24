@@ -35,7 +35,7 @@ KINDS = (
 EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
 AVAILABILITY = ("custom_agent", "model_override", "unavailable", "unknown")
 EXECUTION_MODES = ("root", "delegate", "inherited")
-DELEGATION_GRANTS = ("none", "one-level")
+DELEGATION_GRANTS = ("none",)
 AUTHORITIES = ("root", "user", "task_contract", "recorded_failure")
 PRIVILEGED_AUTHORITIES = frozenset(("user", "task_contract", "recorded_failure"))
 QUALITY_LEVELS = ("standard", "quality_first")
@@ -323,7 +323,7 @@ def validate_route_intent(payload: Any) -> dict[str, Any]:
     for field in ("references", "owned_paths", "constraints", "verification", "supported_spawn_fields"):
         data[field] = _strings(data[field], f"$.{field}", required=field in ("verification", "supported_spawn_fields"))
     if data["delegation_grant"] not in DELEGATION_GRANTS:
-        raise ContractError("$.delegation_grant must be none or one-level")
+        raise ContractError("$.delegation_grant must be none; routed children are leaves at depth one")
     if not isinstance(data["commit_authority"], bool):
         raise ContractError("$.commit_authority must be a boolean")
 
